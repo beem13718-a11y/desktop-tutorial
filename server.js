@@ -2,18 +2,29 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const db = require('./config/db');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Security Middlewares
+app.use(helmet({
+  contentSecurityPolicy: false // Disable CSP temporarily to prevent breaking inline scripts/styles
+}));
+
 // Setup session middleware
 app.use(session({
   secret: process.env.SESSION_SECRET || 'garageflow-secret-key-12345',
   resave: false,
-  saveUninitialized: true,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 hours
+  saveUninitialized: false, // More secure, don't save empty sessions
+  cookie: { 
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    httpOnly: true, // Prevent client-side JS from accessing cookies
+    sameSite: 'lax' // CSRF protection measure
+  } 
 }));
 
 // Body parsing middleware
@@ -59,8 +70,19 @@ const systemController = require('./controllers/systemController');
 // ==========================================
 // ROUTE MOUNTING
 // ==========================================
-app.post('/line/webhook', systemController.lineWebhook);
-app.use('/auth', authRoutes);
+// Rate Limiters
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 requests per windowMs
+  message: 'Too many login attempts from this IP, please try again after 15 minutes'
+});
+const webhookLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30 // Limit each IP to 30 requests per minute
+});
+
+app.post('/line/webhook', webhookLimiter, systemController.lineWebhook);
+app.use('/auth', authLimiter, authRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/customers', customerRoutes);
 app.use('/vehicles', vehicleRoutes);
@@ -151,6 +173,23 @@ app.get('/health', async (req, res) => {
     }
   }
 })();
+
+// ==========================================
+// GLOBAL ERROR HANDLER
+// ==========================================
+app.use((err, req, res, next) => {
+  console.error('[Global Error]', err.stack);
+  res.status(500);
+  // If it's an API request, return JSON
+  if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+    return res.json({ success: false, message: 'เกิดข้อผิดพลาดภายในระบบ' });
+  }
+  // Otherwise render error page
+  res.render('error', { 
+    title: 'Server Error', 
+    message: 'เกิดข้อผิดพลาดทางเทคนิคภายในระบบ (500 Internal Server Error)' 
+  });
+});
 
 // Start Express Server
 app.listen(PORT, () => {
