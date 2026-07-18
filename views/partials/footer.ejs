@@ -1,0 +1,111 @@
+      </main>
+    </div>
+  </div>
+
+  <!-- Bootstrap Bundle with Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+  <!-- Global Custom Scripts -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const toggleBtn = document.getElementById('sidebarToggleBtn');
+      const sidebar = document.getElementById('sidebarMenu');
+      
+      if (toggleBtn && sidebar) {
+        toggleBtn.addEventListener('click', function(e) {
+          sidebar.classList.toggle('show');
+          e.stopPropagation();
+        });
+        
+        // Close sidebar if user clicks outside of it in mobile/tablet view
+        document.addEventListener('click', function(e) {
+          if (sidebar.classList.contains('show') && !sidebar.contains(e.target) && e.target !== toggleBtn) {
+            sidebar.classList.remove('show');
+          }
+        });
+      }
+
+      // Scroll position preservation on reload/submit (Same Path Only)
+      const savedScroll = sessionStorage.getItem('scrollPosition');
+      const savedPath = sessionStorage.getItem('scrollPath');
+      if (savedScroll && savedPath === window.location.pathname) {
+        window.scrollTo(0, parseInt(savedScroll, 10));
+      }
+      sessionStorage.removeItem('scrollPosition');
+      sessionStorage.removeItem('scrollPath');
+
+      window.addEventListener('beforeunload', function() {
+        sessionStorage.setItem('scrollPosition', window.scrollY);
+        sessionStorage.setItem('scrollPath', window.location.pathname);
+      });
+
+      // Global Instant Custom Tooltip Handler
+      const tooltip = document.createElement('div');
+      tooltip.style.position = 'fixed';
+      tooltip.style.background = 'rgba(15, 17, 23, 0.95)';
+      tooltip.style.color = '#fff';
+      tooltip.style.padding = '8px 12px';
+      tooltip.style.borderRadius = '8px';
+      tooltip.style.fontSize = '0.8rem';
+      tooltip.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.5)';
+      tooltip.style.border = '1px solid rgba(255, 107, 0, 0.4)';
+      tooltip.style.pointerEvents = 'none';
+      tooltip.style.opacity = '0';
+      tooltip.style.transition = 'opacity 0.1s ease';
+      tooltip.style.zIndex = '99999';
+      tooltip.style.maxWidth = '300px';
+      tooltip.style.wordBreak = 'break-word';
+      tooltip.style.whiteSpace = 'normal';
+      document.body.appendChild(tooltip);
+
+      document.body.addEventListener('mouseover', function(e) {
+        const target = e.target.closest('[title]');
+        if (target && !target.closest('.dropdown-menu') && !target.closest('.sidebar-menu') && !target.closest('.sidebar-toggle') && !target.closest('.notifications-trigger')) {
+          const titleText = target.getAttribute('title');
+          if (titleText && titleText.trim() !== '') {
+            target.setAttribute('data-stored-title', titleText);
+            target.removeAttribute('title');
+            
+            tooltip.innerHTML = titleText;
+            tooltip.style.opacity = '1';
+            positionTooltip(e);
+          }
+        }
+      });
+
+      document.body.addEventListener('mousemove', function(e) {
+        if (tooltip.style.opacity === '1') {
+          positionTooltip(e);
+        }
+      });
+
+      document.body.addEventListener('mouseout', function(e) {
+        const target = e.target.closest('[data-stored-title]');
+        if (target) {
+          const storedTitle = target.getAttribute('data-stored-title');
+          if (storedTitle) {
+            target.setAttribute('title', storedTitle);
+            target.removeAttribute('data-stored-title');
+          }
+          tooltip.style.opacity = '0';
+        }
+      });
+
+      function positionTooltip(e) {
+        let x = e.clientX + 15;
+        let y = e.clientY + 15;
+        
+        if (x + tooltip.offsetWidth > window.innerWidth) {
+          x = e.clientX - tooltip.offsetWidth - 15;
+        }
+        if (y + tooltip.offsetHeight > window.innerHeight) {
+          y = e.clientY - tooltip.offsetHeight - 15;
+        }
+        
+        tooltip.style.left = x + 'px';
+        tooltip.style.top = y + 'px';
+      }
+    });
+  </script>
+</body>
+</html>

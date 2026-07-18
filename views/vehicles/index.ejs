@@ -1,0 +1,552 @@
+<%- include('../partials/header') %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="page-title">จัดการข้อมูลรถยนต์</h2>
+  <button class="btn btn-glass-success" data-bs-toggle="modal" data-bs-target="#addVehicleModal">
+    <i class="fa-solid fa-plus me-1"></i> ลงทะเบียนรถยนต์ใหม่
+  </button>
+</div>
+
+<!-- Search Bar & Filters -->
+<div class="glass-card mb-4 py-3">
+  <form action="/vehicles" method="GET" id="vehicleFilterForm" class="row g-3 align-items-end">
+    <div class="col-md-9 col-sm-8">
+      <label class="form-label text-muted small"><i class="fa-solid fa-car me-1 text-info"></i> ค้นหาข้อมูลรถยนต์</label>
+      <input type="text" class="form-control form-glass" name="search" value="<%= search %>" placeholder="ค้นหาป้ายทะเบียน, ยี่ห้อ, รุ่น, ชื่อเจ้าของรถ..." style="border-radius: 8px;">
+    </div>
+    <div class="col-md-3 col-sm-4 d-grid">
+      <button type="submit" class="btn btn-glass-primary">
+        <i class="fa-solid fa-magnifying-glass me-1"></i> ค้นหาข้อมูล
+      </button>
+    </div>
+    
+    <!-- Multi-Filters Dropdowns Row -->
+    <div class="col-12 mt-3">
+      <label class="form-label text-muted small mb-2"><i class="fa-solid fa-filter me-1 text-warning"></i> กรองข้อมูลรถ</label>
+      <div class="row row-cols-1 row-cols-sm-3 row-cols-md-3 g-2">
+        <div class="col">
+          <select class="form-select form-glass text-light py-1.5" name="brand" id="brandFilter" style="font-size: 0.8rem;">
+            <option value="" <%= !selectedBrand ? 'selected' : '' %>>ยี่ห้อรถ: ทั้งหมด</option>
+            <% brands.forEach(b => { %>
+              <option value="<%= b.brand %>" <%= selectedBrand === b.brand ? 'selected' : '' %>><%= b.brand %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col">
+          <select class="form-select form-glass text-light py-1.5" name="model" id="modelFilter" style="font-size: 0.8rem;">
+            <option value="" <%= !selectedModel ? 'selected' : '' %>>รุ่นรถ: ทั้งหมด</option>
+            <% models.forEach(m => { %>
+              <option value="<%= m.model %>" <%= selectedModel === m.model ? 'selected' : '' %>><%= m.model %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col">
+          <select class="form-select form-glass text-light py-1.5" name="year" id="yearFilter" style="font-size: 0.8rem;">
+            <option value="" <%= !selectedYear ? 'selected' : '' %>>ปีรถ: ทั้งหมด</option>
+            <% years.forEach(y => { %>
+              <option value="<%= y.year %>" <%= selectedYear == y.year ? 'selected' : '' %>><%= y.year %></option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Vehicles Table -->
+<div class="glass-card" id="vehiclesContainer">
+  <div class="table-responsive">
+    <table class="table-excel text-light">
+      <thead>
+        <tr>
+          <th class="text-center" style="width: 4%;">ลำดับ</th>
+          <th class="text-center" style="width: 12%;">เลขทะเบียน</th>
+          <th class="text-center" style="width: 16%;">ยี่ห้อ / รุ่น</th>
+          <th class="text-center" style="width: 6%;">ปีรถ</th>
+          <th class="text-center" style="width: 8%;">สี</th>
+          <th style="width: 16%;">เลขตัวถัง (VIN)</th>
+          <th class="text-center" style="width: 20%;">เจ้าของรถยนต์</th>
+          <th class="text-center" style="width: 18%;">การจัดการ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (vehicles.length === 0) { %>
+          <tr>
+            <td colspan="8" class="text-center text-muted py-4">ไม่พบข้อมูลรถยนต์ในระบบ</td>
+          </tr>
+        <% } else { %>
+          <% vehicles.forEach((vehicle, index) => { %>
+            <tr>
+              <td class="text-center"><%= (currentPage - 1) * 10 + index + 1 %></td>
+              <td class="text-center">
+                <% 
+                  let plateStr = (vehicle.license_plate || '').trim();
+                  let lastSpaceIdx = plateStr.lastIndexOf(' ');
+                  let plateNo = plateStr;
+                  let plateProv = '';
+                  if (lastSpaceIdx > 0) {
+                    plateNo = plateStr.substring(0, lastSpaceIdx);
+                    plateProv = plateStr.substring(lastSpaceIdx + 1);
+                  }
+                %>
+                <span class="badge bg-light text-dark px-2.5 py-1.5 font-monospace d-inline-flex flex-column align-items-center" style="font-size: 0.85rem; line-height: 1.2; min-width: 100px; border: 1.5px solid rgba(0,0,0,0.15); box-shadow: 0 2px 5px rgba(0,0,0,0.15);">
+                  <span class="fw-bold text-dark" style="letter-spacing: 0.5px;"><%= plateNo %></span>
+                  <% if (plateProv) { %>
+                    <span class="text-secondary" style="font-size: 0.68rem; margin-top: 1px; font-weight: 500;"><%= plateProv %></span>
+                  <% } %>
+                </span>
+              </td>
+              <td class="text-center" title="<%= vehicle.brand %> <%= vehicle.model %>">
+                <div class="fw-bold text-light"><%= vehicle.brand %></div>
+                <div class="small text-muted"><%= vehicle.model %></div>
+              </td>
+              <td class="text-center font-monospace text-muted"><%= vehicle.year || '-' %></td>
+              <td class="text-center" title="<%= vehicle.color || '' %>">
+                <span class="small text-light text-opacity-90"><%= vehicle.color || '-' %></span>
+              </td>
+              <td class="<%= !vehicle.vin ? 'text-center' : '' %>">
+                <div class="font-monospace text-muted small <%= !vehicle.vin ? 'text-center' : '' %>" title="<%= vehicle.vin %>" style="width: 100%; word-break: break-all; white-space: normal; line-height: 1.2;">
+                  <%= vehicle.vin || '-' %>
+                </div>
+              </td>
+              <td class="text-center" title="<%= vehicle.customer_name %> (<%= vehicle.customer_phone %>)">
+                <div class="fw-semibold text-light"><%= vehicle.customer_name %></div>
+                <div class="small text-muted mt-0.5"><%= vehicle.customer_phone %></div>
+              </td>
+              <td class="text-center">
+                <div class="d-flex flex-column gap-1 align-items-center justify-content-center">
+                  <a href="/vehicles/history/<%= vehicle.id %>" class="btn btn-sm btn-outline-warning w-100" style="font-size: 0.72rem; padding: 4px 6px;" title="ดูประวัติการซ่อมบำรุง">
+                    <i class="fa-solid fa-history me-1"></i> ประวัติซ่อม
+                  </a>
+                  <div class="d-flex gap-1 w-100">
+                    <button class="btn btn-sm btn-outline-info flex-grow-1 edit-vehicle-btn" 
+                            data-id="<%= vehicle.id %>"
+                            data-customer_id="<%= vehicle.customer_id %>"
+                            data-license_plate="<%= vehicle.license_plate %>"
+                            data-brand="<%= vehicle.brand %>"
+                            data-model="<%= vehicle.model %>"
+                            data-year="<%= vehicle.year %>"
+                            data-color="<%= vehicle.color %>"
+                            data-vin="<%= vehicle.vin %>"
+                            style="font-size: 0.72rem; padding: 4px 6px;"
+                            title="แก้ไข">
+                      <i class="fa-solid fa-pen-to-square"></i> แก้ไข
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger flex-grow-1 delete-vehicle-btn" 
+                            data-id="<%= vehicle.id %>"
+                            data-plate="<%= vehicle.license_plate %>"
+                            style="font-size: 0.72rem; padding: 4px 6px;"
+                            title="ลบ">
+                      <i class="fa-solid fa-trash"></i> ลบ
+                    </button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <% if (totalPages > 1) { %>
+    <nav class="d-flex justify-content-center mt-4">
+      <ul class="pagination pagination-sm m-0">
+        <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
+          <a class="page-link bg-dark border-secondary text-light" href="/vehicles?search=<%= search %>&page=<%= currentPage - 1 %>">ก่อนหน้า</a>
+        </li>
+        <% for(let i = 1; i <= totalPages; i++) { %>
+          <li class="page-item <%= currentPage === i ? 'active' : '' %>">
+            <a class="page-link <%= currentPage === i ? 'bg-primary border-primary text-light' : 'bg-dark border-secondary text-light' %>" href="/vehicles?search=<%= search %>&page=<%= i %>"><%= i %></a>
+          </li>
+        <% } %>
+        <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
+          <a class="page-link bg-dark border-secondary text-light" href="/vehicles?search=<%= search %>&page=<%= currentPage + 1 %>">ถัดไป</a>
+        </li>
+      </ul>
+    </nav>
+  <% } %>
+</div>
+
+<!-- ==========================================
+     MODALS
+     ========================================== -->
+
+<!-- Add Vehicle Modal -->
+<div class="modal fade" id="addVehicleModal" tabindex="-1" aria-labelledby="addVehicleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content text-light" style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 16px; backdrop-filter: var(--glass-blur);">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title" id="addVehicleModalLabel"><i class="fa-solid fa-car text-success me-2"></i>ลงทะเบียนรถยนต์ใหม่</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="addVehicleForm">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="addCustomerId" class="form-label">เจ้าของรถยนต์ <span class="text-danger">*</span></label>
+              <select class="form-select form-glass text-light" id="addCustomerId" required>
+                <option value="" disabled selected>-- เลือกชื่อลูกค้า --</option>
+                <% customers.forEach(customer => { %>
+                  <option value="<%= customer.id %>"><%= customer.fullname %> (<%= customer.phone %>)</option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="addLicensePlate" class="form-label">ป้ายทะเบียนรถยนต์ <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-glass text-light" id="addLicensePlate" required placeholder="เช่น กก 1234 กรุงเทพฯ">
+            </div>
+            <div class="col-md-6">
+              <label for="addBrand" class="form-label">ยี่ห้อรถยนต์ <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-glass text-light" id="addBrand" required placeholder="เช่น Toyota, Honda, Mazda">
+            </div>
+            <div class="col-md-6">
+              <label for="addModel" class="form-label">รุ่นรถยนต์ <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-glass text-light" id="addModel" required placeholder="เช่น Civic, Camry, Mazda 3">
+            </div>
+            <div class="col-md-4">
+              <label for="addYear" class="form-label">ปีรถยนต์</label>
+              <input type="number" class="form-control form-glass text-light" id="addYear" placeholder="เช่น 2020">
+            </div>
+            <div class="col-md-4">
+              <label for="addColor" class="form-label">สีตัวถังรถ</label>
+              <input type="text" class="form-control form-glass text-light" id="addColor" placeholder="เช่น ขาว, ดำ, แดง">
+            </div>
+            <div class="col-md-4">
+              <label for="addVin" class="form-label">เลขตัวถัง (VIN)</label>
+              <input type="text" class="form-control form-glass text-light" id="addVin" placeholder="17 หลัก">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-secondary bg-opacity-25 border-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-glass-success">ลงทะเบียนรถยนต์</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Vehicle Modal -->
+<div class="modal fade" id="editVehicleModal" tabindex="-1" aria-labelledby="editVehicleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content text-light" style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 16px; backdrop-filter: var(--glass-blur);">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title" id="editVehicleModalLabel"><i class="fa-solid fa-car text-info me-2"></i>แก้ไขข้อมูลรถยนต์</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editVehicleForm">
+        <input type="hidden" id="editVehicleId">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="editCustomerId" class="form-label">เจ้าของรถยนต์ <span class="text-danger">*</span></label>
+              <select class="form-select form-glass text-light" id="editCustomerId" required>
+                <% customers.forEach(customer => { %>
+                  <option value="<%= customer.id %>"><%= customer.fullname %> (<%= customer.phone %>)</option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="editLicensePlate" class="form-label">ป้ายทะเบียนรถยนต์ <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-glass text-light" id="editLicensePlate" required>
+            </div>
+            <div class="col-md-6">
+              <label for="editBrand" class="form-label">ยี่ห้อรถยนต์ <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-glass text-light" id="editBrand" required>
+            </div>
+            <div class="col-md-6">
+              <label for="editModel" class="form-label">รุ่นรถยนต์ <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-glass text-light" id="editModel" required>
+            </div>
+            <div class="col-md-4">
+              <label for="editYear" class="form-label">ปีรถยนต์</label>
+              <input type="number" class="form-control form-glass text-light" id="editYear">
+            </div>
+            <div class="col-md-4">
+              <label for="editColor" class="form-label">สีตัวถังรถ</label>
+              <input type="text" class="form-control form-glass text-light" id="editColor">
+            </div>
+            <div class="col-md-4">
+              <label for="editVin" class="form-label">เลขตัวถัง (VIN)</label>
+              <input type="text" class="form-control form-glass text-light" id="editVin">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-secondary bg-opacity-25 border-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-glass-primary">บันทึกการแก้ไข</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts for Fetching -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    
+    // 1. Add Vehicle Submit
+    const addForm = document.getElementById('addVehicleForm');
+    addForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const payload = {
+        customer_id: document.getElementById('addCustomerId').value,
+        license_plate: document.getElementById('addLicensePlate').value,
+        brand: document.getElementById('addBrand').value,
+        model: document.getElementById('addModel').value,
+        year: document.getElementById('addYear').value,
+        color: document.getElementById('addColor').value,
+        vin: document.getElementById('addVin').value
+      };
+      
+      fetch('/vehicles/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          window.location.reload();
+        } else {
+          alert('ผิดพลาด: ' + data.message);
+        }
+      })
+      .catch(err => {
+        console.error('Fetch Add Vehicle Error:', err);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+      });
+    });
+
+    // 2. Edit Button Click (populate modal)
+    const editBtns = document.querySelectorAll('.edit-vehicle-btn');
+    const editModal = new bootstrap.Modal(document.getElementById('editVehicleModal'));
+    
+    editBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.getElementById('editVehicleId').value = this.dataset.id;
+        document.getElementById('editCustomerId').value = this.dataset.customer_id;
+        document.getElementById('editLicensePlate').value = this.dataset.license_plate;
+        document.getElementById('editBrand').value = this.dataset.brand;
+        document.getElementById('editModel').value = this.dataset.model;
+        document.getElementById('editYear').value = this.dataset.year === 'null' ? '' : this.dataset.year;
+        document.getElementById('editColor').value = this.dataset.color === 'null' ? '' : this.dataset.color;
+        document.getElementById('editVin').value = this.dataset.vin === 'null' ? '' : this.dataset.vin;
+        
+        editModal.show();
+      });
+    });
+
+    // 3. Edit Form Submit
+    const editForm = document.getElementById('editVehicleForm');
+    editForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const id = document.getElementById('editVehicleId').value;
+      const payload = {
+        customer_id: document.getElementById('editCustomerId').value,
+        license_plate: document.getElementById('editLicensePlate').value,
+        brand: document.getElementById('editBrand').value,
+        model: document.getElementById('editModel').value,
+        year: document.getElementById('editYear').value,
+        color: document.getElementById('editColor').value,
+        vin: document.getElementById('editVin').value
+      };
+      
+      fetch('/vehicles/edit/' + id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          window.location.reload();
+        } else {
+          alert('ผิดพลาด: ' + data.message);
+        }
+      })
+      .catch(err => {
+        console.error('Fetch Edit Vehicle Error:', err);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+      });
+    });
+
+    // ==========================================
+    // AJAX Live Filtering & Scroll Preservation
+    // ==========================================
+    const filterForm = document.getElementById('vehicleFilterForm');
+
+    function fetchVehiclesData(url) {
+      const container = document.getElementById('vehiclesContainer');
+      if (container) container.style.opacity = '0.65';
+
+      fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+
+          // Swap Vehicles Container
+          const newContainer = doc.getElementById('vehiclesContainer');
+          if (newContainer && container) {
+            container.innerHTML = newContainer.innerHTML;
+            container.style.opacity = '1';
+            // Re-attach edit and delete listeners on the new content!
+            attachVehicleListeners();
+          }
+
+          // Update URL in address bar
+          window.history.pushState({ path: url }, '', url);
+        })
+        .catch(err => {
+          console.error('Fetch Vehicles Error:', err);
+          if (container) container.style.opacity = '1';
+        });
+    }
+
+    function attachVehicleListeners() {
+      // Re-attach delete listeners
+      const deleteBtns = document.querySelectorAll('.delete-vehicle-btn');
+      deleteBtns.forEach(btn => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+      });
+
+      const freshDeleteBtns = document.querySelectorAll('.delete-vehicle-btn');
+      freshDeleteBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+          const id = this.dataset.id;
+          const plate = this.dataset.plate;
+          
+          if (confirm(`คุณยืนยันต้องการลบข้อมูลรถยนต์ทะเบียน "${plate}" ใช่หรือไม่?\nการกระทำนี้อาจจะลบประวัติการซ่อมทั้งหมดของรถคันนี้ด้วย`)) {
+            fetch('/vehicles/delete/' + id, {
+              method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                alert(data.message);
+                fetchVehiclesData(buildVehicleUrl());
+              } else {
+                alert('ไม่สามารถลบได้: ' + data.message);
+              }
+            })
+            .catch(err => {
+              console.error('Fetch Delete Vehicle Error:', err);
+              alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+            });
+          }
+        });
+      });
+
+      // Re-attach edit modal button listeners
+      const editBtns = document.querySelectorAll('.edit-vehicle-btn');
+      editBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+          // Fill form data as normal
+          document.getElementById('editId').value = this.dataset.id;
+          document.getElementById('editLicensePlate').value = this.dataset.licensePlate;
+          document.getElementById('editBrand').value = this.dataset.brand;
+          document.getElementById('editModel').value = this.dataset.model;
+          document.getElementById('editYear').value = this.dataset.year || '';
+          document.getElementById('editColor').value = this.dataset.color || '';
+          document.getElementById('editVin').value = this.dataset.vin || '';
+          document.getElementById('editCustomerId').value = this.dataset.customerId;
+          
+          const editModal = new bootstrap.Modal(document.getElementById('editVehicleModal'));
+          editModal.show();
+        });
+      });
+    }
+
+    // Helper to build URL with all filters
+    function buildVehicleUrl() {
+      const searchVal = encodeURIComponent(filterForm.querySelector('input[name="search"]').value);
+      const brandVal = encodeURIComponent(document.getElementById('brandFilter')?.value || '');
+      const modelVal = encodeURIComponent(document.getElementById('modelFilter')?.value || '');
+      const yearVal = encodeURIComponent(document.getElementById('yearFilter')?.value || '');
+      const colorVal = encodeURIComponent(document.getElementById('colorFilter')?.value || '');
+      const customerIdVal = encodeURIComponent(document.getElementById('customerFilter')?.value || '');
+      return `/vehicles?search=${searchVal}&brand=${brandVal}&model=${modelVal}&year=${yearVal}&color=${colorVal}&customer_id=${customerIdVal}`;
+    }
+
+    // Intercept form submit
+    filterForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      fetchVehiclesData(buildVehicleUrl());
+    });
+
+    // Foolproof search button click
+    const searchBtn = filterForm.querySelector('button[type="submit"]');
+    if (searchBtn) {
+      searchBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        fetchVehiclesData(buildVehicleUrl());
+      });
+    }
+
+    // Intercept Enter keypress in search input
+    const searchInput = filterForm.querySelector('input[name="search"]');
+    if (searchInput) {
+      searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          fetchVehiclesData(buildVehicleUrl());
+        }
+      });
+    }
+
+    // Intercept dropdown changes (Auto-submit with cascading clears!)
+    const brandFilterSelect = document.getElementById('brandFilter');
+    const modelFilterSelect = document.getElementById('modelFilter');
+    const yearFilterSelect = document.getElementById('yearFilter');
+
+    if (brandFilterSelect) {
+      brandFilterSelect.addEventListener('change', function() {
+        if (modelFilterSelect) modelFilterSelect.value = '';
+        if (yearFilterSelect) yearFilterSelect.value = '';
+        fetchVehiclesData(buildVehicleUrl());
+      });
+    }
+
+    if (modelFilterSelect) {
+      modelFilterSelect.addEventListener('change', function() {
+        if (yearFilterSelect) yearFilterSelect.value = '';
+        fetchVehiclesData(buildVehicleUrl());
+      });
+    }
+
+    if (yearFilterSelect) {
+      yearFilterSelect.addEventListener('change', function() {
+        fetchVehiclesData(buildVehicleUrl());
+      });
+    }
+
+    // Intercept pagination clicks via event delegation
+    const vehiclesContainer = document.getElementById('vehiclesContainer');
+    if (vehiclesContainer) {
+      vehiclesContainer.addEventListener('click', function(e) {
+        const pageLink = e.target.closest('.page-link');
+        if (pageLink) {
+          e.preventDefault();
+          const url = pageLink.getAttribute('href');
+          if (url && url !== '#') {
+            fetchVehiclesData(url);
+          }
+        }
+      });
+    }
+
+    // Initial listeners
+    attachVehicleListeners();
+
+  });
+</script>
+
+<%- include('../partials/footer') %>

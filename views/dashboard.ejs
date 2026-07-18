@@ -1,0 +1,349 @@
+<%- include('partials/header') %>
+
+<!-- Page Title & Greeting -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="page-title">แผงควบคุมระบบ</h2>
+    <% let cleanFullname = (user.fullname || '').replace(/\s*\([^)]*\)/g, '').trim(); %>
+    <div class="text-muted small mt-1">สวัสดีคุณ <strong><%= cleanFullname %></strong> ยินดีต้อนรับสู่ระบบบริหารจัดการอู่ซ่อมรถยนต์ BT Auto</div>
+  </div>
+  <div class="text-end">
+    <div class="badge bg-dark border border-secondary text-light px-3 py-2">
+      <i class="fa-solid fa-calendar-days me-1 text-primary"></i> วันนี้: <%= new Date().toLocaleDateString('th-TH', {year: 'numeric', month: 'long', day: 'numeric'}) %>
+    </div>
+  </div>
+</div>
+
+<!-- Alert for Low Stock Items -->
+<% if (stats.lowStock > 0) { %>
+  <div class="alert alert-warning border-0 text-light bg-warning bg-opacity-25 mb-4 d-flex align-items-center justify-content-between" role="alert" style="border-radius: 12px; backdrop-filter: var(--glass-blur);">
+    <div>
+      <i class="fa-solid fa-triangle-exclamation me-2 text-warning animate-pulse fa-lg"></i>
+      <span>ตรวจพบอะไหล่สำรองในคลังสินค้า <strong>ต่ำกว่าเกณฑ์แจ้งเตือนจำนวน <%= stats.lowStock %> รายการ</strong> กรุณาตรวจสอบคลังอะไหล่</span>
+    </div>
+    <a href="/inventory?low_stock=true" class="btn btn-sm btn-outline-warning">
+      <i class="fa-solid fa-boxes-stacked me-1"></i> ตรวจสอบสต็อก
+    </a>
+  </div>
+<% } %>
+
+<!-- Summary Stats Row -->
+<div class="row g-4 mb-4">
+  <!-- Customers Card -->
+  <div class="col-xl-3 col-md-6">
+    <div class="glass-card stat-card">
+      <div>
+        <div class="text-muted small fw-semibold">ลูกค้าทั้งหมด</div>
+        <div class="stat-number text-light"><%= stats.customers %> คน</div>
+      </div>
+      <div class="stat-icon info">
+        <i class="fa-solid fa-users"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vehicles Card -->
+  <div class="col-xl-3 col-md-6">
+    <div class="glass-card stat-card">
+      <div>
+        <div class="text-muted small fw-semibold">รถยนต์ขึ้นทะเบียน</div>
+        <div class="stat-number text-light"><%= stats.vehicles %> คัน</div>
+      </div>
+      <div class="stat-icon success">
+        <i class="fa-solid fa-car"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Repair Card -->
+  <div class="col-xl-3 col-md-6">
+    <div class="glass-card stat-card">
+      <div>
+        <div class="text-muted small fw-semibold">งานซ่อมทั้งหมด</div>
+        <div class="stat-number text-light"><%= stats.repairs %> เคส</div>
+      </div>
+      <div class="stat-icon warning">
+        <i class="fa-solid fa-screwdriver-wrench"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly Income Card -->
+  <div class="col-xl-3 col-md-6">
+    <div class="glass-card stat-card">
+      <div>
+        <div class="text-muted small fw-semibold">รายได้เดือนนี้</div>
+        <div class="stat-number text-success"><%= stats.monthIncome.toLocaleString('th-TH') %> ฿</div>
+      </div>
+      <div class="stat-icon success" style="background: rgba(16, 185, 129, 0.15);">
+        <i class="fa-solid fa-wallet"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts & Status Breakdown Section -->
+<div class="row g-4 mb-4">
+  <!-- Chart 1: Revenue Line Graph -->
+  <div class="col-lg-8">
+    <div class="glass-card" style="height: 395px;">
+      <h5 class="text-light mb-4"><i class="fa-solid fa-money-bill-trend-up me-2 text-success"></i>สถิติรายรับรายเดือน (6 เดือนล่าสุด)</h5>
+      <div style="position: relative; height: 315px; width: 100%;">
+        <canvas id="revenueChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 2: Repairs bar Graph (Row 2 Right, col-lg-4) -->
+  <div class="col-lg-4">
+    <div class="glass-card" style="height: 395px;">
+      <h5 class="text-light mb-4"><i class="fa-solid fa-chart-bar me-2 text-info"></i>จำนวนงานซ่อมแยกรายเดือน</h5>
+      <div style="position: relative; height: 315px; width: 100%;">
+        <canvas id="repairsChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pipeline Status Breakdown Section (Row 3, Full Width) -->
+<div class="row g-4 mb-4">
+  <div class="col-12">
+    <div class="glass-card">
+      <h5 class="text-light mb-3"><i class="fa-solid fa-chart-pie me-2 text-warning"></i>สัดส่วนขั้นตอนสถานะงานซ่อมปัจจุบัน</h5>
+      <div class="row g-3">
+        <div class="col-6 col-md-4 col-lg-2">
+          <div class="p-3 bg-dark bg-opacity-25 rounded-3 border border-secondary border-opacity-15 text-center">
+            <div class="text-warning small mb-1"><i class="fa-solid fa-car-arrow-col me-1"></i>รับรถ</div>
+            <div class="h4 m-0 text-light fw-bold"><%= statusStats.pending.count %> <span class="small" style="font-size: 0.75rem;">งาน</span></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+          <div class="p-3 bg-dark bg-opacity-25 rounded-3 border border-secondary border-opacity-15 text-center">
+            <div class="text-info small mb-1"><i class="fa-solid fa-magnifying-glass me-1"></i>ตรวจสภาพ</div>
+            <div class="h4 m-0 text-light fw-bold"><%= statusStats.inspecting.count %> <span class="small" style="font-size: 0.75rem;">งาน</span></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+          <div class="p-3 bg-dark bg-opacity-25 rounded-3 border border-secondary border-opacity-15 text-center">
+            <div class="text-warning small mb-1"><i class="fa-solid fa-boxes-packing me-1"></i>รออะไหล่</div>
+            <div class="h4 m-0 text-light fw-bold"><%= statusStats.waiting_parts.count %> <span class="small" style="font-size: 0.75rem;">งาน</span></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+          <div class="p-3 bg-dark bg-opacity-25 rounded-3 border border-secondary border-opacity-15 text-center">
+            <div class="text-primary small mb-1"><i class="fa-solid fa-screwdriver-wrench me-1"></i>กำลังซ่อม</div>
+            <div class="h4 m-0 text-light fw-bold"><%= statusStats.repairing.count %> <span class="small" style="font-size: 0.75rem;">งาน</span></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+          <div class="p-3 bg-dark bg-opacity-25 rounded-3 border border-secondary border-opacity-15 text-center">
+            <div class="text-info small mb-1"><i class="fa-solid fa-shield-halved me-1"></i>ตรวจสอบ</div>
+            <div class="h4 m-0 text-light fw-bold"><%= statusStats.checking.count %> <span class="small" style="font-size: 0.75rem;">งาน</span></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+          <div class="p-3 bg-dark bg-opacity-25 rounded-3 border border-secondary border-opacity-15 text-center">
+            <div class="text-success small mb-1"><i class="fa-solid fa-circle-check me-1"></i>พร้อมส่งมอบ</div>
+            <div class="h4 m-0 text-light fw-bold"><%= statusStats.ready.count %> <span class="small" style="font-size: 0.75rem;">งาน</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Repairs Section (Row 4, Full Width) -->
+<div class="row g-4">
+  <div class="col-12">
+    <div class="glass-card">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="text-light m-0"><i class="fa-solid fa-clock-rotate-left me-2 text-warning"></i>รายการเข้ารับบริการล่าสุด</h5>
+        <a href="/repairs" class="btn btn-sm btn-outline-light">
+          ดูงานซ่อมทั้งหมด <i class="fa-solid fa-arrow-right ms-1" style="font-size: 0.8rem;"></i>
+        </a>
+      </div>
+      
+      <div class="table-responsive">
+        <table class="table-excel text-light">
+          <thead>
+            <tr>
+              <th class="text-center" style="width: 14%;">ป้ายทะเบียน</th>
+              <th class="text-center" style="width: 180px;">ยี่ห้อ / รุ่น</th>
+              <th class="text-center" style="width: 180px;">ลูกค้า</th>
+              <th>อาการที่แจ้ง</th>
+              <th style="width: 140px;">ขั้นตอนล่าสุด</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (recentRepairs.length === 0) { %>
+              <tr>
+                <td colspan="5" class="text-center text-muted py-3">ยังไม่มีข้อมูลการซ่อมเข้าระบบ</td>
+              </tr>
+            <% } else { %>
+              <% recentRepairs.forEach(repair => { %>
+                <tr>
+                  <td class="text-center">
+                    <% 
+                      let plateStr = (repair.license_plate || '').trim();
+                      let lastSpaceIdx = plateStr.lastIndexOf(' ');
+                      let plateNo = plateStr;
+                      let plateProv = '';
+                      if (lastSpaceIdx > 0) {
+                        plateNo = plateStr.substring(0, lastSpaceIdx);
+                        plateProv = plateStr.substring(lastSpaceIdx + 1);
+                      }
+                    %>
+                    <span class="badge bg-light text-dark px-2.5 py-1.5 font-monospace d-inline-flex flex-column align-items-center" style="font-size: 0.85rem; line-height: 1.2; min-width: 100px; border: 1.5px solid rgba(0,0,0,0.15); box-shadow: 0 2px 5px rgba(0,0,0,0.15);">
+                      <span class="fw-bold text-dark" style="letter-spacing: 0.5px;"><%= plateNo %></span>
+                      <% if (plateProv) { %>
+                        <span class="text-secondary" style="font-size: 0.68rem; margin-top: 1px; font-weight: 500;"><%= plateProv %></span>
+                      <% } %>
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <div class="fw-bold text-light"><%= repair.brand %></div>
+                    <div class="small text-muted mt-0.5"><%= repair.model %></div>
+                  </td>
+                  <td class="text-center"><%= repair.customer_name %></td>
+                  <td>
+                    <div class="text-light text-opacity-85 small" title="<%= repair.description %>" style="width: 100%; overflow: hidden; white-space: nowrap;">
+                      <%= repair.description %>
+                    </div>
+                  </td>
+                  <td>
+                    <% if (repair.status === 'pending') { %>
+                      <span class="status-badge badge-pending">รับรถ</span>
+                    <% } else if (repair.status === 'inspecting') { %>
+                      <span class="status-badge badge-inspecting">ตรวจสภาพ</span>
+                    <% } else if (repair.status === 'waiting_parts') { %>
+                      <span class="status-badge badge-pending text-warning" style="background: rgba(245, 158, 11, 0.1);">รออะไหล่</span>
+                    <% } else if (repair.status === 'repairing') { %>
+                      <span class="status-badge badge-repairing">กำลังซ่อม</span>
+                    <% } else if (repair.status === 'checking') { %>
+                      <span class="status-badge badge-inspecting text-info">ตรวจสอบ</span>
+                    <% } else if (repair.status === 'ready') { %>
+                      <span class="status-badge badge-completed text-success">พร้อมรับรถ</span>
+                    <% } else if (repair.status === 'completed') { %>
+                      <span class="status-badge badge-completed">ส่งมอบแล้ว</span>
+                    <% } else if (repair.status === 'cancelled') { %>
+                      <span class="status-badge badge-cancelled">ยกเลิกแล้ว</span>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ChartJS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Render Graph Scripts -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    
+    // Parse values passed from controller
+    const labels = <%- charts.labels %>;
+    const revenueData = <%- charts.revenue %>;
+    const repairsData = <%- charts.repairs %>;
+
+    // 1. Revenue Line Chart Setup
+    const revCtx = document.getElementById('revenueChart').getContext('2d');
+    new Chart(revCtx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'รายรับสะสม (บาท)',
+          data: revenueData,
+          borderColor: '#00E676', // Neon Success Green
+          backgroundColor: 'rgba(0, 230, 118, 0.1)',
+          borderWidth: 3,
+          tension: 0.3,
+          fill: true,
+          pointBackgroundColor: '#00E676',
+          pointHoverRadius: 7
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.05)'
+            },
+            ticks: {
+              color: '#94A3B8'
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              color: '#94A3B8'
+            }
+          }
+        }
+      }
+    });
+
+    // 2. Repairs Bar Chart Setup
+    const repCtx = document.getElementById('repairsChart').getContext('2d');
+    new Chart(repCtx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'จำนวนเคสซ่อม (งาน)',
+          data: repairsData,
+          backgroundColor: '#FF6B00', // Garage Orange
+          borderColor: '#E65100',
+          borderWidth: 1,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.05)'
+            },
+            ticks: {
+              color: '#94A3B8',
+              stepSize: 1
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              color: '#94A3B8'
+            }
+          }
+        }
+      }
+    });
+
+  });
+</script>
+
+<%- include('partials/footer') %>

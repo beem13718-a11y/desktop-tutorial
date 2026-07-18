@@ -1,0 +1,96 @@
+<%- include('../partials/header') %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="page-title">ประวัติการซ่อมบำรุงรถยนต์</h2>
+  <a href="/vehicles" class="btn btn-glass-primary">
+    <i class="fa-solid fa-arrow-left me-1"></i> กลับหน้าข้อมูลรถยนต์
+  </a>
+</div>
+
+<!-- Vehicle Card Summary -->
+<div class="glass-card mb-4">
+  <h5 class="text-info mb-3"><i class="fa-solid fa-car me-2"></i>ข้อมูลรายละเอียดรถยนต์</h5>
+  <div class="row g-3">
+    <div class="col-md-3 col-sm-6">
+      <div class="text-muted" style="font-size: 0.85rem;">เลขทะเบียน</div>
+      <div class="fw-bold h5 text-light mb-0 mt-1"><span class="badge bg-secondary border border-light px-2 py-1.5"><%= vehicle.license_plate %></span></div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="text-muted" style="font-size: 0.85rem;">ยี่ห้อ / รุ่น</div>
+      <div class="fw-bold text-light mb-0 mt-1"><%= vehicle.brand %> - <%= vehicle.model %></div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="text-muted" style="font-size: 0.85rem;">ปี / สีตัวรถ</div>
+      <div class="fw-bold text-light mb-0 mt-1"><%= vehicle.year || '-' %> / <%= vehicle.color || '-' %></div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="text-muted" style="font-size: 0.85rem;">เจ้าของรถยนต์</div>
+      <div class="fw-bold text-light mb-0 mt-1">
+        <%= vehicle.customer_name %>
+        <div><small class="text-muted"><i class="fa-solid fa-phone me-1"></i><%= vehicle.customer_phone %></small></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- History Timeline / List -->
+<div class="glass-card">
+  <h5 class="text-warning mb-4"><i class="fa-solid fa-clock-rotate-left me-2"></i>ประวัติการเข้ารับบริการซ่อมบำรุง</h5>
+  
+  <% if (repairs.length === 0) { %>
+    <div class="text-center text-muted py-5">
+      <i class="fa-solid fa-circle-info fa-3x mb-3 text-secondary"></i>
+      <p>ไม่พบประวัติการเปิดใบซ่อมของรถยนต์คันนี้ในระบบ</p>
+    </div>
+  <% } else { %>
+    <div class="table-responsive">
+      <table class="table-glass text-light">
+        <thead>
+          <tr>
+            <th>วันที่เปิดใบซ่อม</th>
+            <th>อาการแจ้งซ่อม / รายละเอียด</th>
+            <th>ช่างผู้รับผิดชอบ</th>
+            <th>สถานะล่าสุด</th>
+            <th class="text-end">ค่าใช้จ่ายจริง (บาท)</th>
+            <th class="text-end">รายละเอียด</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% repairs.forEach(repair => { %>
+            <tr>
+              <td><%= new Date(repair.created_at).toLocaleDateString('th-TH') %></td>
+              <td>
+                <div class="fw-bold"><%= repair.description %></div>
+                <small class="text-muted">เลขใบซ่อม: #<%= repair.id %></small>
+              </td>
+              <td><%= repair.mechanic_name || 'ยังไม่ระบุช่าง' %></td>
+              <td>
+                <% if (repair.status === 'pending') { %>
+                  <span class="status-badge badge-pending">รับรถเข้าระบบ</span>
+                <% } else if (repair.status === 'inspecting') { %>
+                  <span class="status-badge badge-inspecting">กำลังตรวจสภาพ</span>
+                <% } else if (repair.status === 'repairing') { %>
+                  <span class="status-badge badge-repairing">กำลังดำเนินการซ่อม</span>
+                <% } else if (repair.status === 'completed') { %>
+                  <span class="status-badge badge-completed">ซ่อมเสร็จสิ้น</span>
+                <% } else if (repair.status === 'cancelled') { %>
+                  <span class="status-badge badge-cancelled">ยกเลิกแล้ว</span>
+                <% } %>
+              </td>
+              <td class="text-end fw-bold text-success">
+                <%= parseFloat(repair.actual_cost) > 0 ? parseFloat(repair.actual_cost).toLocaleString('th-TH', {minimumFractionDigits: 2}) : '-' %>
+              </td>
+              <td class="text-end">
+                <a href="/repairs/detail/<%= repair.id %>" class="btn btn-sm btn-outline-info">
+                  <i class="fa-solid fa-magnifying-glass"></i> ดูรายละเอียด
+                </a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../partials/footer') %>

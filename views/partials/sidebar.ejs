@@ -1,0 +1,120 @@
+<aside class="sidebar" id="sidebarMenu">
+  <div class="sidebar-brand">
+    <i class="fa-solid fa-car-burst"></i>
+    <span>GarageFlow</span>
+  </div>
+
+  <div class="sidebar-menu-wrapper">
+    
+    <!-- Item 1: Dashboard -->
+    <div class="menu-block">
+      <ul class="sidebar-menu">
+        <li class="menu-item <%= typeof activePage !== 'undefined' && activePage === 'dashboard' ? 'active' : '' %>">
+          <a href="/dashboard">
+            <i class="fa-solid fa-chart-line text-primary"></i>
+            <span>แผงควบคุม</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Item 2: Customers -->
+    <div class="menu-block">
+      <ul class="sidebar-menu">
+        <li class="menu-item <%= typeof activePage !== 'undefined' && activePage === 'customers' ? 'active' : '' %>">
+          <a href="/customers">
+            <i class="fa-solid fa-users text-info"></i>
+            <span>ข้อมูลลูกค้า</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Item 3: Vehicles -->
+    <div class="menu-block">
+      <ul class="sidebar-menu">
+        <li class="menu-item <%= typeof activePage !== 'undefined' && activePage === 'vehicles' ? 'active' : '' %>">
+          <a href="/vehicles">
+            <i class="fa-solid fa-car text-success"></i>
+            <span>ข้อมูลรถยนต์</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Item 4: Repairs -->
+    <div class="menu-block">
+      <ul class="sidebar-menu">
+        <li class="menu-item <%= typeof activePage !== 'undefined' && activePage === 'repairs' ? 'active' : '' %>">
+          <a href="/repairs">
+            <i class="fa-solid fa-screwdriver-wrench text-warning"></i>
+            <span>รายการซ่อม</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Item 5: Inventory -->
+    <div class="menu-block">
+      <ul class="sidebar-menu">
+        <li class="menu-item <%= typeof activePage !== 'undefined' && activePage === 'inventory' ? 'active' : '' %>">
+          <a href="/inventory">
+            <i class="fa-solid fa-boxes-stacked text-info"></i>
+            <span>คลังอะไหล่</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Item 6: Finances -->
+    <div class="menu-block">
+      <ul class="sidebar-menu">
+        <li class="menu-item <%= typeof activePage !== 'undefined' && activePage === 'finances' ? 'active' : '' %>">
+          <a href="/finances">
+            <i class="fa-solid fa-wallet text-success"></i>
+            <span>ระบบการเงิน</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <% if (typeof user !== 'undefined' && user && user.role === 'owner') { %>
+      <!-- Item: Mechanics -->
+      <div class="menu-block">
+        <ul class="sidebar-menu">
+          <li class="menu-item <%= typeof activePage !== 'undefined' && activePage === 'mechanics' ? 'active' : '' %>">
+            <a href="/mechanics">
+              <i class="fa-solid fa-user-gear text-info"></i>
+              <span>ข้อมูลช่างซ่อม</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    <% } %>
+
+    <!-- Item 7: Alerts -->
+    <div class="menu-block">
+      <ul class="sidebar-menu">
+        <li class="menu-item <%= typeof activePage !== 'undefined' && activePage === 'notifications' ? 'active' : '' %>">
+          <a href="/notifications">
+            <i class="fa-solid fa-bell text-warning"></i>
+            <span>ระบบแจ้งเตือน</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Item 8: Settings -->
+    <div class="menu-block">
+      <ul class="sidebar-menu">
+        <li class="menu-item <%= typeof activePage !== 'undefined' && activePage === 'settings' ? 'active' : '' %>">
+          <a href="/settings">
+            <i class="fa-solid fa-gears text-muted"></i>
+            <span>จัดการระบบ</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+</aside>

@@ -1,0 +1,252 @@
+<%- include('partials/header') %>
+
+<div class="mb-4">
+  <h2 class="page-title">จัดการควบคุมระบบ</h2>
+  <div class="text-muted small mt-1">ตั้งค่าผู้ใช้งาน สำรองข้อมูลระบบ และส่องบันทึกความคืบหน้ากิจกรรมแอดมิน</div>
+</div>
+
+<div class="row g-4">
+  <!-- Left Side: User management & Backup -->
+  <div class="col-lg-6">
+    <!-- Staff Reset Password Card -->
+    <div class="glass-card mb-4">
+      <h5 class="text-warning mb-4"><i class="fa-solid fa-key me-2"></i>เปลี่ยนรหัสผ่านผู้ปฏิบัติงาน</h5>
+      <form id="changePasswordForm" class="g-3">
+        <div class="mb-3">
+          <label for="staffUser" class="form-label small">เลือกพนักงาน / ผู้ใช้งาน</label>
+          <select class="form-select form-glass text-light" id="staffUser" required>
+            <option value="" disabled selected>-- เลือกผู้ปฏิบัติงาน --</option>
+            <% staffList.forEach(s => { %>
+              <option value="<%= s.id %>"><%= s.fullname %> (<%= s.username %>) - [<%= s.role %>]</option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="newPassword" class="form-label small">รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)</label>
+          <input type="password" class="form-control form-glass text-light" id="newPassword" minlength="6" required placeholder="กรอกรหัสผ่านใหม่...">
+        </div>
+        <div class="d-grid">
+          <button type="submit" class="btn btn-glass-primary">ยืนยันเปลี่ยนรหัสผ่าน</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- LINE Integration Card -->
+    <div class="glass-card mb-4">
+      <h5 class="text-info mb-4"><i class="fa-brands fa-line me-2 text-success" style="font-size: 1.25rem;"></i>เชื่อมต่อระบบ LINE (LINE API Integration)</h5>
+      <form id="lineConfigForm" class="g-3">
+        <!-- LINE Notify -->
+        <div class="mb-4">
+          <label for="lineNotifyToken" class="form-label text-light fw-bold small"><i class="fa-solid fa-bell text-warning me-1"></i> 1. LINE Notify Token (แจ้งเตือนเข้ากลุ่มไลน์)</label>
+          <p class="text-muted" style="font-size: 0.75rem; margin-top: -5px; line-height: 1.3;">ใช้ส่งประวัติใบซ่อมเข้ากลุ่มช่างและกลุ่มผู้ปฏิบัติงานอู่เพื่อแจ้งเตือนงานใหม่ งานซ่อมเสร็จ และการรับเงิน</p>
+          <input type="password" class="form-control form-glass text-light" id="lineNotifyToken" value="<%= lineSettings.line_notify_token || '' %>" placeholder="กรอก LINE Notify Token ของกลุ่มไลน์...">
+        </div>
+        
+        <hr class="border-secondary border-opacity-25 my-3">
+
+        <!-- LINE Messaging API -->
+        <div class="mb-3">
+          <label for="lineChannelToken" class="form-label text-light fw-bold small"><i class="fa-solid fa-paper-plane text-info me-1"></i> 2. LINE OA Channel Access Token (แจ้งเตือนลูกค้าโดยตรง)</label>
+          <p class="text-muted" style="font-size: 0.75rem; margin-top: -5px; line-height: 1.3;">ใช้ส่งข้อความอัปเดตใบแจ้งซ่อม หรือราคาแจ้งลูกค้าโดยตรงทางแชท LINE OA (LINE Official Account)</p>
+          <input type="password" class="form-control form-glass text-light mb-2" id="lineChannelToken" value="<%= lineSettings.line_channel_token || '' %>" placeholder="กรอก Channel Access Token (Long-lived)...">
+        </div>
+        
+        <div class="mb-3">
+          <label for="lineChannelSecret" class="form-label text-light fw-bold small">LINE OA Channel Secret</label>
+          <input type="password" class="form-control form-glass text-light" id="lineChannelSecret" value="<%= lineSettings.line_channel_secret || '' %>" placeholder="กรอก Channel Secret...">
+        </div>
+
+        <div class="d-grid mt-4">
+          <button type="submit" class="btn btn-glass-success w-100">
+            <i class="fa-solid fa-floppy-disk me-1"></i> บันทึกการเชื่อมต่อ LINE
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Backup & Restore Card -->
+    <div class="glass-card mb-4">
+      <h5 class="text-success mb-4"><i class="fa-solid fa-database me-2"></i>ระบบสำรองและกู้คืนฐานข้อมูล (Database Backup / Restore)</h5>
+      
+      <div class="mb-4">
+        <h6 class="text-light fw-bold small mb-2">1. สำรองข้อมูล (Backup Database)</h6>
+        <p class="text-muted small">ระบบจะสร้างไฟล์และดาวน์โหลดคำสั่ง SQL สำหรับสำรองโครงสร้างตารางและข้อมูลทั้งหมดในปัจจุบัน</p>
+        <a href="/settings/backup" class="btn btn-glass-success w-100">
+          <i class="fa-solid fa-download me-1"></i> ดาวน์โหลดไฟล์สำรองข้อมูล (.sql)
+        </a>
+      </div>
+
+      <hr class="border-secondary border-opacity-25 my-4">
+
+      <div>
+        <h6 class="text-light fw-bold small mb-2">2. กู้คืนข้อมูล (Restore Database)</h6>
+        <p class="text-muted small text-danger">* คำเตือน: การกู้คืนข้อมูลจะทำการลบตารางปัจจุบันและแทนที่ด้วยข้อมูลจากไฟล์ SQL ที่อัปโหลด</p>
+        <form id="restoreDbForm" class="g-3">
+          <div class="mb-3">
+            <input type="file" class="form-control form-glass text-light" id="restoreFile" accept=".sql" required>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-glass-primary bg-opacity-10 border-danger text-danger btn-restore">
+              <i class="fa-solid fa-upload me-1"></i> ยืนยันการกู้คืนข้อมูลเข้าระบบ
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: Audit Logs Table -->
+  <div class="col-lg-6">
+    <div class="glass-card h-100">
+      <h5 class="text-info mb-4"><i class="fa-solid fa-clipboard-list me-2"></i>บันทึกความปลอดภัยระบบ (Audit Logs)</h5>
+      
+      <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+        <table class="table-glass text-light">
+          <thead>
+            <tr>
+              <th>วัน-เวลา</th>
+              <th>แอดมิน</th>
+              <th>การกระทำ</th>
+              <th>รายละเอียดเพิ่มเติม</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (auditLogs.length === 0) { %>
+              <tr>
+                <td colspan="4" class="text-center text-muted py-3">ยังไม่พบบันทึกการเคลื่อนไหวระบบ</td>
+              </tr>
+            <% } else { %>
+              <% auditLogs.forEach(log => { %>
+                <tr>
+                  <td style="font-size: 0.8rem;" class="text-muted"><%= new Date(log.created_at).toLocaleString('th-TH') %></td>
+                  <td class="fw-semibold text-light" style="font-size: 0.85rem;"><%= log.user_fullname %></td>
+                  <td>
+                    <span class="badge bg-secondary border border-light text-light" style="font-size: 0.75rem;"><%= log.action %></span>
+                  </td>
+                  <td style="font-size: 0.85rem;" class="text-muted"><%= log.details %></td>
+                </tr>
+              <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts for Settings Actions -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    
+    // 1. Password change form submit
+    const pwForm = document.getElementById('changePasswordForm');
+    pwForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const payload = {
+        staff_id: document.getElementById('staffUser').value,
+        new_password: document.getElementById('newPassword').value
+      };
+      
+      fetch('/settings/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          pwForm.reset();
+        } else {
+          alert('ผิดพลาด: ' + data.message);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+      });
+    });
+
+    // 2. Restore DB Upload and POST
+    const restoreForm = document.getElementById('restoreDbForm');
+    restoreForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const fileInput = document.getElementById('restoreFile');
+      const file = fileInput.files[0];
+      
+      if (!file) {
+        alert('กรุณาเลือกไฟล์สำรองข้อมูล .sql ก่อนทำการกู้คืน');
+        return;
+      }
+      
+      if (!confirm('คำเตือนความปลอดภัย:\nคุณแน่ใจว่าต้องการลบโครงสร้างตารางข้อมูลทั้งหมด และกู้คืนข้อมูลจากไฟล์นี้ใช่หรือไม่?\nการกระทำนี้จะสลับลบข้อมูลปัจจุบันทั้งหมดทันที!')) {
+        return;
+      }
+      
+      // Use FileReader to read file content
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const sqlContent = event.target.result;
+        
+        fetch('/settings/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sql_content: sqlContent })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert(data.message);
+            window.location.reload();
+          } else {
+            alert('ไม่สามารถกู้คืนได้: ' + data.message);
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert('เกิดข้อผิดพลาดทางเทคนิคในการส่งไฟล์กู้คืน');
+        });
+      };
+      
+      reader.readAsText(file);
+    });
+
+    // 3. LINE settings form submit
+    const lineForm = document.getElementById('lineConfigForm');
+    if (lineForm) {
+      lineForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const payload = {
+          line_notify_token: document.getElementById('lineNotifyToken').value,
+          line_channel_token: document.getElementById('lineChannelToken').value,
+          line_channel_secret: document.getElementById('lineChannelSecret').value
+        };
+        
+        fetch('/settings/line', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert(data.message);
+            window.location.reload();
+          } else {
+            alert('ผิดพลาด: ' + data.message);
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+        });
+      });
+    }
+
+  });
+</script>
+
+<%- include('partials/footer') %>

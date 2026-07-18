@@ -1,0 +1,709 @@
+<%- include('../partials/header') %>
+
+<style>
+  .autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 12px;
+    z-index: 1055; /* Higher than bootstrap modal body (1050) */
+    background: #1e2030;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    max-height: 180px;
+    overflow-y: auto;
+    width: calc(100% - 24px); /* Match bootstrap padding */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  }
+  .autocomplete-suggestion {
+    padding: 8px 12px;
+    cursor: pointer;
+    color: #e0e0e0;
+    font-size: 0.85rem;
+    transition: background 0.15s ease;
+  }
+  .autocomplete-suggestion:hover {
+    background: rgba(0, 229, 255, 0.15);
+    color: #00E5FF;
+  }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="page-title">สต็อกคลังอะไหล่</h2>
+  <button class="btn btn-glass-success" data-bs-toggle="modal" data-bs-target="#addPartModal">
+    <i class="fa-solid fa-plus me-1"></i> เพิ่มอะไหล่ใหม่เข้าคลัง
+  </button>
+</div>
+
+<!-- Filters Bar -->
+<div class="glass-card mb-4 py-3">
+  <form action="/inventory" method="GET" id="inventoryFilterForm" class="row g-3 align-items-end">
+    <div class="col-md-4 col-sm-6">
+      <label class="form-label text-muted small"><i class="fa-solid fa-magnifying-glass me-1 text-info"></i> ค้นหาอะไหล่</label>
+      <input type="text" class="form-control form-glass" name="search" value="<%= search %>" placeholder="ค้นหารหัสอะไหล่, ชื่ออะไหล่..." style="border-radius: 8px;">
+    </div>
+    
+    <div class="col-md-3 col-sm-6">
+      <label class="form-label text-muted small"><i class="fa-solid fa-filter me-1 text-warning"></i> กรองตามหมวดหมู่อะไหล่</label>
+      <select class="form-select form-glass text-light" name="category" id="categoryFilter">
+        <option value="" <%= !selectedCategory ? 'selected' : '' %>>-- แสดงทั้งหมด --</option>
+        <% categories.forEach(cat => { %>
+          <option value="<%= cat.category %>" <%= selectedCategory === cat.category ? 'selected' : '' %>><%= cat.category %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="col-md-3 col-sm-8 pb-2">
+      <div class="form-check form-switch text-light">
+        <input class="form-check-input" type="checkbox" role="switch" id="lowStockToggle" name="low_stock" value="true" <%= lowStockFiltered ? 'checked' : '' %>>
+        <label class="form-check-label text-warning fw-semibold" for="lowStockToggle" style="cursor: pointer;">กรองเฉพาะของขาดคลัง</label>
+      </div>
+    </div>
+
+    <div class="col-md-2 col-sm-4 d-grid">
+      <button type="submit" class="btn btn-glass-primary">
+        <i class="fa-solid fa-magnifying-glass me-1"></i> ค้นหาข้อมูล
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Inventory Table -->
+<div class="glass-card" id="inventoryContainer">
+  <div class="table-responsive">
+    <table class="table-excel text-light">
+      <thead>
+        <tr>
+          <th style="width: 24%;">ชื่ออะไหล่</th>
+          <th class="text-center" style="width: 10%;">หมวดหมู่</th>
+          <th class="text-center" style="width: 10%;">คงเหลือ (ชิ้น)</th>
+          <th class="text-center" style="width: 8%;">เกณฑ์เตือน</th>
+          <th class="text-end" style="width: 10%;">ราคาทุน (บาท)</th>
+          <th class="text-end" style="width: 10%;">ราคาขาย (บาท)</th>
+          <th style="width: 15%;">ผู้จัดจำหน่าย</th>
+          <th class="text-center" style="width: 13%;">การจัดการ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (inventory.length === 0) { %>
+          <tr>
+            <td colspan="8" class="text-center text-muted py-4">ไม่พบข้อมูลอะไหล่ในสต็อก</td>
+          </tr>
+        <% } else { %>
+          <% inventory.forEach(part => { 
+            const qty = part.stock_qty;
+            const min = part.min_qty;
+            let stockClass = "text-success";
+            let stockBadge = "";
+            let rowStyle = "";
+            
+            if (qty === 0) {
+              stockClass = "text-danger fw-bold";
+              stockBadge = `<span class="badge text-light font-weight-bold" style="background-color: #FF1744 !important; font-size: 0.72rem;"><i class="fa-solid fa-circle-xmark me-1"></i>ของหมด</span>`;
+              rowStyle = "background: rgba(255, 23, 68, 0.08);";
+            } else if (min > 0 && (qty / min) <= 0.1) {
+              stockClass = "text-danger fw-bold";
+              stockBadge = `<span class="badge text-light font-weight-bold" style="background-color: #FF3D00 !important; font-size: 0.72rem;"><i class="fa-solid fa-triangle-exclamation me-1"></i>วิกฤต (<= 1/10)</span>`;
+              rowStyle = "background: rgba(255, 61, 0, 0.06);";
+            } else if (min > 0 && (qty / min) <= 0.2) {
+              stockClass = "text-warning fw-bold";
+              stockBadge = `<span class="badge text-dark font-weight-bold" style="background-color: #FF9100 !important; font-size: 0.72rem;"><i class="fa-solid fa-triangle-exclamation me-1"></i>เตือนภัย (<= 2/10)</span>`;
+              rowStyle = "background: rgba(255, 145, 0, 0.04);";
+            } else if (qty <= min) {
+              stockClass = "text-warning";
+              stockBadge = `<span class="badge text-dark font-weight-bold" style="background-color: #FFC400 !important; font-size: 0.72rem;"><i class="fa-solid fa-circle-exclamation me-1"></i>สต็อกต่ำ</span>`;
+              rowStyle = "background: rgba(255, 196, 0, 0.02);";
+            }
+          %>
+            <tr style="<%= rowStyle %>">
+              <td>
+                <div class="fw-semibold text-light" title="<%= part.part_name %>" style="width: 100%; overflow: hidden; white-space: nowrap;"><%= part.part_name %></div>
+                <% if (stockBadge) { %>
+                  <%- stockBadge %>
+                <% } %>
+              </td>
+              <td class="text-center text-light small"><%= part.category || 'ทั่วไป' %></td>
+              <td class="text-center fw-bold <%= stockClass %>" style="font-size: 1.05rem;">
+                <%= qty %>
+              </td>
+              <td class="text-center text-muted"><%= min %></td>
+              <td class="text-end text-muted"><%= parseFloat(part.cost_price).toLocaleString('th-TH', {minimumFractionDigits: 2}) %></td>
+              <td class="text-end text-light"><%= parseFloat(part.sell_price).toLocaleString('th-TH', {minimumFractionDigits: 2}) %></td>
+              <td class="<%= !part.supplier ? 'text-center' : '' %>">
+                <div class="text-muted small <%= !part.supplier ? 'text-center' : '' %>" title="<%= part.supplier || '-' %>" style="width: 100%; overflow: hidden; white-space: nowrap;">
+                  <%= part.supplier || '-' %>
+                </div>
+              </td>
+              <td class="text-center">
+                <div class="d-flex flex-column gap-1 align-items-center justify-content-center">
+                  <button class="btn btn-sm btn-outline-success w-100 restock-part-btn" 
+                          data-id="<%= part.id %>"
+                          data-name="<%= part.part_name %>"
+                          data-stock="<%= part.stock_qty %>"
+                          style="font-size: 0.72rem; padding: 4px 6px;"
+                          title="เติมสต็อก">
+                    <i class="fa-solid fa-plus-circle me-1"></i> เติมของ
+                  </button>
+                  <div class="d-flex gap-1 w-100">
+                    <button class="btn btn-sm btn-outline-info flex-grow-1 edit-part-btn" 
+                            data-id="<%= part.id %>"
+                            data-name="<%= part.part_name %>"
+                            data-number="<%= part.part_number %>"
+                            data-category="<%= part.category %>"
+                            data-min="<%= part.min_qty %>"
+                            data-cost="<%= part.cost_price %>"
+                            data-sell="<%= part.sell_price %>"
+                            data-supplier="<%= part.supplier %>"
+                            style="font-size: 0.72rem; padding: 4px 6px;"
+                            title="แก้ไข">
+                      <i class="fa-solid fa-pen-to-square"></i> แก้ไข
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger flex-grow-1 delete-part-btn" 
+                            data-id="<%= part.id %>"
+                            data-name="<%= part.part_name %>"
+                            style="font-size: 0.72rem; padding: 4px 6px;"
+                            title="ลบ">
+                      <i class="fa-solid fa-trash"></i> ลบ
+                    </button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ==========================================
+     MODALS
+     ========================================== -->
+
+<!-- Add Spare Part Modal -->
+<div class="modal fade" id="addPartModal" tabindex="-1" aria-labelledby="addPartModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content text-light" style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 16px; backdrop-filter: var(--glass-blur);">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title" id="addPartModalLabel"><i class="fa-solid fa-boxes-stacked text-success me-2"></i>ลงทะเบียนอะไหล่เข้าระบบ</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="addPartForm">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="addPartNumber" class="form-label">รหัสสินค้า / อะไหล่ (Part Number) <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-glass text-light" id="addPartNumber" required placeholder="เช่น BRK-TOY-002">
+            </div>
+            <div class="col-md-6 position-relative">
+              <label for="addPartName" class="form-label">ชื่อสินค้าอะไหล่ <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-glass text-light" id="addPartName" name="part_name" autocomplete="off" required placeholder="เช่น ผ้าเบรกหน้า Camry">
+              <div id="addPartNameSuggestions" class="autocomplete-suggestions d-none"></div>
+            </div>
+            <div class="col-md-6 position-relative">
+              <label for="addCategory" class="form-label">หมวดหมู่</label>
+              <input type="text" class="form-control form-glass text-light" id="addCategory" name="category" autocomplete="off" placeholder="เช่น ระบบไฟ, ระบบเบรก, ของเหลว">
+              <div id="addCategorySuggestions" class="autocomplete-suggestions d-none"></div>
+            </div>
+            <div class="col-md-6 position-relative">
+              <label for="addSupplier" class="form-label">ซัพพลายเออร์ / ผู้จัดจำหน่าย</label>
+              <input type="text" class="form-control form-glass text-light" id="addSupplier" name="supplier" autocomplete="off" placeholder="เช่น Bendix Thailand">
+              <div id="addSupplierSuggestions" class="autocomplete-suggestions d-none"></div>
+            </div>
+            <div class="col-md-3">
+              <label for="addStockQty" class="form-label">จำนวนสินค้าเริ่มต้น <span class="text-danger">*</span></label>
+              <input type="number" class="form-control form-glass text-light" id="addStockQty" value="10" required>
+            </div>
+            <div class="col-md-3">
+              <label for="addMinQty" class="form-label">เกณฑ์แจ้งเตือนสต็อก <span class="text-danger">*</span></label>
+              <input type="number" class="form-control form-glass text-light" id="addMinQty" value="3" required>
+            </div>
+            <div class="col-md-3">
+              <label for="addCostPrice" class="form-label">ราคาทุนต่อหน่วย (บาท) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control form-glass text-light" id="addCostPrice" step="0.01" required>
+            </div>
+            <div class="col-md-3">
+              <label for="addSellPrice" class="form-label">ราคาขายต่อหน่วย (บาท) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control form-glass text-light" id="addSellPrice" step="0.01" required>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-secondary bg-opacity-25 border-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-glass-success">บันทึกข้อมูล</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Spare Part Modal -->
+<div class="modal fade" id="editPartModal" tabindex="-1" aria-labelledby="editPartModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content text-light" style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 16px; backdrop-filter: var(--glass-blur);">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title" id="editPartModalLabel"><i class="fa-solid fa-pen-to-square text-info me-2"></i>แก้ไขข้อมูลอะไหล่คลัง</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editPartForm">
+        <input type="hidden" id="editPartId">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="editPartNumber" class="form-label">รหัสสินค้า / อะไหล่ (Part Number) <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-glass text-light" id="editPartNumber" required>
+            </div>
+            <div class="col-md-6 position-relative">
+              <label for="editPartName" class="form-label">ชื่อสินค้าอะไหล่ <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-glass text-light" id="editPartName" name="part_name" autocomplete="off" required>
+              <div id="editPartNameSuggestions" class="autocomplete-suggestions d-none"></div>
+            </div>
+            <div class="col-md-6 position-relative">
+              <label for="editCategory" class="form-label">หมวดหมู่</label>
+              <input type="text" class="form-control form-glass text-light" id="editCategory" name="category" autocomplete="off">
+              <div id="editCategorySuggestions" class="autocomplete-suggestions d-none"></div>
+            </div>
+            <div class="col-md-6 position-relative">
+              <label for="editSupplier" class="form-label">ซัพพลายเออร์ / ผู้จัดจำหน่าย</label>
+              <input type="text" class="form-control form-glass text-light" id="editSupplier" name="supplier" autocomplete="off">
+              <div id="editSupplierSuggestions" class="autocomplete-suggestions d-none"></div>
+            </div>
+            <div class="col-md-4">
+              <label for="editMinQty" class="form-label">เกณฑ์แจ้งเตือนสต็อก <span class="text-danger">*</span></label>
+              <input type="number" class="form-control form-glass text-light" id="editMinQty" required>
+            </div>
+            <div class="col-md-4">
+              <label for="editCostPrice" class="form-label">ราคาทุนต่อหน่วย (บาท) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control form-glass text-light" id="editCostPrice" step="0.01" required>
+            </div>
+            <div class="col-md-4">
+              <label for="editSellPrice" class="form-label">ราคาขายต่อหน่วย (บาท) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control form-glass text-light" id="editSellPrice" step="0.01" required>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-secondary bg-opacity-25 border-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-glass-primary">อัปเดตข้อมูล</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Restock Part Modal -->
+<div class="modal fade" id="restockPartModal" tabindex="-1" aria-labelledby="restockPartModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-light" style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 16px; backdrop-filter: var(--glass-blur);">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title" id="restockPartModalLabel"><i class="fa-solid fa-plus-circle text-success me-2"></i>เติมสต็อกอะไหล่ (Restock)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="restockPartForm">
+        <input type="hidden" id="restockPartId">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label text-muted d-block">ชื่ออะไหล่</label>
+            <div class="fw-bold h5 text-light" id="restockPartName"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted">จำนวนในสต็อกปัจจุบัน</label>
+            <div class="fw-semibold text-info" id="restockCurrentStock">0 ชิ้น</div>
+          </div>
+          <div class="mb-3">
+            <label for="restockQty" class="form-label">จำนวนสินค้าที่ต้องการเติม <span class="text-danger">*</span></label>
+            <input type="number" class="form-control form-glass text-light" id="restockQty" value="5" min="1" required>
+            <div class="form-text text-muted">* ยอดชำระราคาทุนจะถูกคำนวณและหักบันทึกเป็นรายจ่ายโดยอัตโนมัติ</div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-secondary bg-opacity-25 border-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-glass-success">ยืนยันการเติม</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- AJAX Actions Scripts -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    
+    // 1. Add Part Submit
+    const addForm = document.getElementById('addPartForm');
+    addForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const payload = {
+        part_number: document.getElementById('addPartNumber').value,
+        part_name:   document.getElementById('addPartName').value,
+        category:    document.getElementById('addCategory').value,
+        stock_qty:   document.getElementById('addStockQty').value,
+        min_qty:     document.getElementById('addMinQty').value,
+        cost_price:  document.getElementById('addCostPrice').value,
+        sell_price:  document.getElementById('addSellPrice').value,
+        supplier:    document.getElementById('addSupplier').value
+      };
+      
+      fetch('/inventory/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          window.location.reload();
+        } else {
+          alert('ผิดพลาด: ' + data.message);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+      });
+    });
+
+    // 2. Edit Button Click
+    const editBtns = document.querySelectorAll('.edit-part-btn');
+    const editModal = new bootstrap.Modal(document.getElementById('editPartModal'));
+    
+    editBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.getElementById('editPartId').value = this.dataset.id;
+        document.getElementById('editPartName').value = this.dataset.name;
+        document.getElementById('editPartNumber').value = this.dataset.number;
+        document.getElementById('editCategory').value = this.dataset.category === 'null' ? '' : this.dataset.category;
+        document.getElementById('editMinQty').value = this.dataset.min;
+        document.getElementById('editCostPrice').value = this.dataset.cost;
+        document.getElementById('editSellPrice').value = this.dataset.sell;
+        document.getElementById('editSupplier').value = this.dataset.supplier === 'null' ? '' : this.dataset.supplier;
+        
+        editModal.show();
+      });
+    });
+
+    // 3. Edit Form Submit
+    const editForm = document.getElementById('editPartForm');
+    editForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const id = document.getElementById('editPartId').value;
+      const payload = {
+        part_number: document.getElementById('editPartNumber').value,
+        part_name:   document.getElementById('editPartName').value,
+        category:    document.getElementById('editCategory').value,
+        min_qty:     document.getElementById('editMinQty').value,
+        cost_price:  document.getElementById('editCostPrice').value,
+        sell_price:  document.getElementById('editSellPrice').value,
+        supplier:    document.getElementById('editSupplier').value
+      };
+      
+      fetch('/inventory/edit/' + id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          window.location.reload();
+        } else {
+          alert('ผิดพลาด: ' + data.message);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+      });
+    });
+
+    // 4. Restock Button Click
+    const restockBtns = document.querySelectorAll('.restock-part-btn');
+    const restockModal = new bootstrap.Modal(document.getElementById('restockPartModal'));
+    
+    restockBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.getElementById('restockPartId').value = this.dataset.id;
+        document.getElementById('restockPartName').innerText = this.dataset.name;
+        document.getElementById('restockCurrentStock').innerText = this.dataset.stock + ' ชิ้น';
+        document.getElementById('restockQty').value = 5;
+        
+        restockModal.show();
+      });
+    });
+
+    // 5. Restock Form Submit
+    const restockForm = document.getElementById('restockPartForm');
+    restockForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const id = document.getElementById('restockPartId').value;
+      const qty = document.getElementById('restockQty').value;
+      
+      fetch('/inventory/restock/' + id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restock_qty: qty })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          window.location.reload();
+        } else {
+          alert('ผิดพลาด: ' + data.message);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+      });
+    });
+
+    // 6. Delete Part Click
+    const deleteBtns = document.querySelectorAll('.delete-part-btn');
+    deleteBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const id = this.dataset.id;
+        const name = this.dataset.name;
+        
+        if (confirm(`คุณต้องการลบข้อมูลอะไหล่ "${name}" ออกจากระบบคลังใช่หรือไม่?`)) {
+          fetch('/inventory/delete/' + id, {
+            method: 'POST'
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              alert(data.message);
+              window.location.reload();
+            } else {
+              alert('ผิดพลาด: ' + data.message);
+            }
+          })
+          .catch(err => {
+            console.error(err);
+            alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+          });
+        }
+      });
+    });
+
+    // ==========================================
+    // AJAX Live Filtering & Scroll Preservation
+    // ==========================================
+    const filterForm = document.getElementById('inventoryFilterForm');
+    const lowStockToggle = document.getElementById('lowStockToggle');
+
+    function fetchInventoryData(url) {
+      const container = document.getElementById('inventoryContainer');
+      if (container) container.style.opacity = '0.65';
+
+      fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+
+          // Swap Table Container
+          const newContainer = doc.getElementById('inventoryContainer');
+          if (newContainer && container) {
+            container.innerHTML = newContainer.innerHTML;
+            container.style.opacity = '1';
+            // Re-attach delete listeners on the new content!
+            attachDeleteListeners();
+          }
+
+          // Update URL in address bar
+          window.history.pushState({ path: url }, '', url);
+        })
+        .catch(err => {
+          console.error('Fetch Inventory Error:', err);
+          if (container) container.style.opacity = '1';
+        });
+    }
+
+    function attachDeleteListeners() {
+      const deleteBtns = document.querySelectorAll('.delete-part-btn');
+      deleteBtns.forEach(btn => {
+        // Clone node to remove existing listeners cleanly
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+      });
+
+      const freshDeleteBtns = document.querySelectorAll('.delete-part-btn');
+      freshDeleteBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+          const id = this.dataset.id;
+          const name = this.dataset.name;
+          
+          if (confirm(`คุณต้องการลบข้อมูลอะไหล่ "${name}" ออกจากระบบคลังใช่หรือไม่?`)) {
+            fetch('/inventory/delete/' + id, {
+              method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                alert(data.message);
+                // Perform dynamic AJAX reload of inventory after deletion instead of hard reload!
+                const searchVal = encodeURIComponent(filterForm.querySelector('input[name="search"]').value);
+                const lowStockVal = lowStockToggle.checked ? 'true' : '';
+                const url = `/inventory?search=${searchVal}&low_stock=${lowStockVal}`;
+                fetchInventoryData(url);
+              } else {
+                alert('ผิดพลาด: ' + data.message);
+              }
+            })
+            .catch(err => {
+              console.error(err);
+              alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+            });
+          }
+        });
+      });
+    }
+
+    // Helper to build URL with all filters
+    function buildInventoryUrl() {
+      const searchVal = encodeURIComponent(filterForm.querySelector('input[name="search"]').value);
+      const categoryFilter = document.getElementById('categoryFilter');
+      const categoryVal = categoryFilter ? encodeURIComponent(categoryFilter.value) : '';
+      const lowStockVal = lowStockToggle.checked ? 'true' : '';
+      return `/inventory?search=${searchVal}&category=${categoryVal}&low_stock=${lowStockVal}`;
+    }
+
+    // Intercept form search submit
+    filterForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      fetchInventoryData(buildInventoryUrl());
+    });
+
+    // Intercept click on search button explicitly
+    const searchBtn = filterForm.querySelector('button[type="submit"]');
+    if (searchBtn) {
+      searchBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        fetchInventoryData(buildInventoryUrl());
+      });
+    }
+
+    // Intercept Enter keypress in search input explicitly
+    const searchInput = filterForm.querySelector('input[name="search"]');
+    if (searchInput) {
+      searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          fetchInventoryData(buildInventoryUrl());
+        }
+      });
+    }
+
+    // Intercept low stock toggle change
+    lowStockToggle.addEventListener('change', function() {
+      fetchInventoryData(buildInventoryUrl());
+    });
+
+    // Intercept category dropdown change (Auto-submit!)
+    const categoryFilterSelect = document.getElementById('categoryFilter');
+    if (categoryFilterSelect) {
+      categoryFilterSelect.addEventListener('change', function() {
+        fetchInventoryData(buildInventoryUrl());
+      });
+    }
+
+    // Custom Autocomplete Dropdown suggestions list filtering logic
+    const defaultSuppliers = ["Bendix", "Denso", "PTT", "Bosch", "3M", "Castrol", "Shell", "Mobil 1", "NGK", "Osram", "GS Battery", "FB Battery", "Toyota", "Honda", "Nissan", "Mazda", "Ford", "Isuzu"];
+    const dbSuppliers = <%- typeof suppliers !== 'undefined' ? JSON.stringify(suppliers.map(s => s.supplier).filter(Boolean)) : '[]' %>;
+    const existingSuppliers = Array.from(new Set([...dbSuppliers, ...defaultSuppliers])).sort();
+
+    const defaultCategories = ["ของเหลว", "ระบบเบรก", "ระบบไฟ", "ไส้กรอง", "เครื่องยนต์", "ช่วงล่าง", "ตัวถังและสี", "ระบบแอร์", "เกียร์และคลัตช์", "ยางรถยนต์"];
+    const dbCategories = <%- typeof categories !== 'undefined' ? JSON.stringify(categories.map(c => c.category).filter(Boolean)) : '[]' %>;
+    const existingCategories = Array.from(new Set([...dbCategories, ...defaultCategories])).sort();
+
+    const defaultPartNames = ["น้ำมันเครื่องสังเคราะห์แท้ 4L", "กรองน้ำมันเครื่อง", "ผ้าเบรคหน้า", "หัวเทียน", "น้ำยาแอร์ R134a", "น้ำยาหม้อน้ำ", "สายพานหน้าเครื่อง", "กรองอากาศ", "กรองแอร์"];
+    const dbPartNames = <%- typeof partNames !== 'undefined' ? JSON.stringify(partNames.map(p => p.part_name).filter(Boolean)) : '[]' %>;
+    const existingPartNames = Array.from(new Set([...dbPartNames, ...defaultPartNames])).sort();
+    
+    function setupCustomAutocomplete(inputEl, suggestionsEl, suggestionsList) {
+      if (!inputEl || !suggestionsEl) return;
+      
+      const renderSuggestions = (list) => {
+        suggestionsEl.innerHTML = '';
+        if (list.length === 0) {
+          suggestionsEl.classList.add('d-none');
+          return;
+        }
+        
+        list.forEach(match => {
+          const div = document.createElement('div');
+          div.className = 'autocomplete-suggestion';
+          div.textContent = match;
+          div.addEventListener('click', function() {
+            inputEl.value = match;
+            suggestionsEl.classList.add('d-none');
+          });
+          suggestionsEl.appendChild(div);
+        });
+        
+        suggestionsEl.classList.remove('d-none');
+      };
+
+      const triggerSuggestions = function() {
+        const val = inputEl.value.trim().toLowerCase();
+        const listToShow = val ? suggestionsList.filter(s => s.toLowerCase().startsWith(val)) : suggestionsList;
+        renderSuggestions(listToShow);
+      };
+
+      inputEl.addEventListener('input', triggerSuggestions);
+      inputEl.addEventListener('focus', triggerSuggestions);
+      inputEl.addEventListener('click', triggerSuggestions);
+      
+      document.addEventListener('click', function(e) {
+        if (e.target !== inputEl && !suggestionsEl.contains(e.target)) {
+          suggestionsEl.classList.add('d-none');
+        }
+      });
+    }
+
+    // Bind Autocomplete to Part Name fields
+    setupCustomAutocomplete(
+      document.getElementById('addPartName'),
+      document.getElementById('addPartNameSuggestions'),
+      existingPartNames
+    );
+    setupCustomAutocomplete(
+      document.getElementById('editPartName'),
+      document.getElementById('editPartNameSuggestions'),
+      existingPartNames
+    );
+
+    // Bind Autocomplete to Category fields
+    setupCustomAutocomplete(
+      document.getElementById('addCategory'),
+      document.getElementById('addCategorySuggestions'),
+      existingCategories
+    );
+    setupCustomAutocomplete(
+      document.getElementById('editCategory'),
+      document.getElementById('editCategorySuggestions'),
+      existingCategories
+    );
+
+    // Bind Autocomplete to Supplier fields
+    setupCustomAutocomplete(
+      document.getElementById('addSupplier'),
+      document.getElementById('addSupplierSuggestions'),
+      existingSuppliers
+    );
+    setupCustomAutocomplete(
+      document.getElementById('editSupplier'),
+      document.getElementById('editSupplierSuggestions'),
+      existingSuppliers
+    );
+
+  });
+</script>
+
+<%- include('../partials/footer') %>

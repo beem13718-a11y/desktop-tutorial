@@ -1,0 +1,345 @@
+<%- include('../partials/header') %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="page-title">ระบบงานซ่อมและรับรถ</h2>
+  <button class="btn btn-glass-success" data-bs-toggle="modal" data-bs-target="#receiveCarModal">
+    <i class="fa-solid fa-plus me-1"></i> รับรถเข้าซ่อม (เปิดใบสั่งซ่อม)
+  </button>
+</div>
+
+<!-- Search & Status Filter Bar -->
+<div class="glass-card mb-4 py-3">
+  <form action="/repairs" method="GET" id="repairFilterForm" class="row g-3 align-items-end">
+    <!-- Search Input -->
+    <div class="col-md-5 col-sm-6">
+      <label class="form-label text-muted small"><i class="fa-solid fa-screwdriver-wrench me-1 text-info"></i> ค้นหาใบสั่งซ่อม</label>
+      <input type="text" class="form-control form-glass" name="search" value="<%= search %>" placeholder="ค้นหาทะเบียนรถ, ชื่อลูกค้า, รายละเอียด..." style="border-radius: 8px;">
+    </div>
+    
+    <!-- Status Filter Dropdown -->
+    <div class="col-md-4 col-sm-6">
+      <label class="form-label text-muted small"><i class="fa-solid fa-filter me-1 text-warning"></i> กรองตามสถานะงานซ่อม</label>
+      <select class="form-select form-glass text-light" name="status" id="statusFilter">
+        <option value="" <%= selectedStatuses.length === 0 ? 'selected' : '' %>>-- แสดงสถานะทั้งหมด --</option>
+        <option value="pending" <%= selectedStatuses.includes('pending') ? 'selected' : '' %>>รับรถเข้าระบบ</option>
+        <option value="inspecting" <%= selectedStatuses.includes('inspecting') ? 'selected' : '' %>>กำลังตรวจสภาพ</option>
+        <option value="waiting_parts" <%= selectedStatuses.includes('waiting_parts') ? 'selected' : '' %>>รออะไหล่</option>
+        <option value="repairing" <%= selectedStatuses.includes('repairing') ? 'selected' : '' %>>กำลังซ่อม</option>
+        <option value="ready" <%= selectedStatuses.includes('ready') ? 'selected' : '' %>>ซ่อมเสร็จ/รอส่งมอบ</option>
+        <option value="completed" <%= selectedStatuses.includes('completed') ? 'selected' : '' %>>ส่งมอบแล้ว</option>
+        <option value="cancelled" <%= selectedStatuses.includes('cancelled') ? 'selected' : '' %>>ยกเลิก</option>
+      </select>
+    </div>
+
+    <!-- Search Button -->
+    <div class="col-md-3 col-sm-12 d-grid">
+      <button type="submit" class="btn btn-glass-primary">
+        <i class="fa-solid fa-magnifying-glass me-1"></i> ค้นหาข้อมูล
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Repairs List Table -->
+<div class="glass-card" id="repairsContainer">
+  <div class="table-responsive">
+    <table class="table-excel text-light">
+      <thead>
+        <tr>
+          <th class="text-center" style="width: 6%;">ลำดับ</th>
+          <th class="text-center" style="width: 12%;">เลขทะเบียน</th>
+          <th class="text-center" style="width: 14%;">ข้อมูลรถยนต์</th>
+          <th class="text-center" style="width: 15%;">ลูกค้า</th>
+          <th style="width: 17%;">อาการเบื้องต้น</th>
+          <th style="width: 12%;">ช่างรับผิดชอบ</th>
+          <th class="text-center" style="width: 11%;">ขั้นตอนงาน</th>
+          <th class="text-end pe-3" style="width: 11%;">ราคาประเมิน</th>
+          <th class="text-center" style="width: 12%;">การจัดการ</th>
+        </tr>
+      </thead>
+      <tbody id="repairsTbody">
+        <% if (repairs.length === 0) { %>
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">ไม่พบรายการใบสั่งซ่อมในระบบ</td>
+          </tr>
+        <% } else { %>
+          <% repairs.forEach(repair => { %>
+            <tr>
+              <td class="text-center fw-bold">#<%= repair.id %></td>
+              <td class="text-center">
+                <% 
+                  let plateStr = (repair.license_plate || '').trim();
+                  let lastSpaceIdx = plateStr.lastIndexOf(' ');
+                  let plateNo = plateStr;
+                  let plateProv = '';
+                  if (lastSpaceIdx > 0) {
+                    plateNo = plateStr.substring(0, lastSpaceIdx);
+                    plateProv = plateStr.substring(lastSpaceIdx + 1);
+                  }
+                %>
+                <span class="badge bg-light text-dark px-2.5 py-1.5 font-monospace d-inline-flex flex-column align-items-center" style="font-size: 0.85rem; line-height: 1.2; min-width: 100px; border: 1.5px solid rgba(0,0,0,0.15); box-shadow: 0 2px 5px rgba(0,0,0,0.15);">
+                  <span class="fw-bold text-dark" style="letter-spacing: 0.5px;"><%= plateNo %></span>
+                  <% if (plateProv) { %>
+                    <span class="text-secondary" style="font-size: 0.68rem; margin-top: 1px; font-weight: 500;"><%= plateProv %></span>
+                  <% } %>
+                </span>
+              </td>
+              <td class="text-center">
+                <div class="fw-bold text-light"><%= repair.brand %></div>
+                <div class="small text-muted mt-0.5"><%= repair.model %></div>
+              </td>
+              <td class="text-center" title="<%= repair.customer_name %> (<%= repair.customer_phone %>)">
+                <div><%= repair.customer_name %></div>
+                <small class="text-muted"><i class="fa-solid fa-phone me-1" style="font-size: 0.75rem;"></i><%= repair.customer_phone %></small>
+              </td>
+              <td>
+                 <div class="text-light text-opacity-85 small" title="<%= repair.description %>" style="width: 100%; overflow: hidden; white-space: nowrap;">
+                   <%= repair.description %>
+                 </div>
+               </td>
+              <td title="<%= repair.mechanic_name || 'ยังไม่มอบหมายช่าง' %>">
+                <% if (repair.mechanic_name) { %>
+                  <span class="text-light"><i class="fa-solid fa-user-gear text-info me-1"></i><%= repair.mechanic_name %></span>
+                <% } else { %>
+                  <span class="text-muted italic"><i class="fa-solid fa-user-slash me-1"></i>ยังไม่มอบหมายช่าง</span>
+                <% } %>
+              </td>
+              <td class="text-center">
+                <% if (repair.status === 'pending') { %>
+                  <span class="status-badge badge-pending">รับรถ</span>
+                <% } else if (repair.status === 'inspecting') { %>
+                  <span class="status-badge badge-inspecting">ตรวจเช็ก</span>
+                <% } else if (repair.status === 'waiting_parts') { %>
+                  <span class="status-badge badge-pending" style="color: #000000 !important;">รออะไหล่</span>
+                <% } else if (repair.status === 'repairing') { %>
+                  <span class="status-badge badge-repairing">กำลังซ่อม</span>
+                <% } else if (repair.status === 'checking') { %>
+                  <span class="status-badge badge-inspecting text-info">รอตรวจสอบ</span>
+                <% } else if (repair.status === 'ready') { %>
+                  <span class="status-badge badge-completed text-success">พร้อมส่งมอบ</span>
+                <% } else if (repair.status === 'completed') { %>
+                  <span class="status-badge badge-completed">ส่งมอบแล้ว</span>
+                <% } else if (repair.status === 'cancelled') { %>
+                  <span class="status-badge badge-cancelled">ยกเลิกแล้ว</span>
+                <% } %>
+              </td>
+              <td class="<%= parseFloat(repair.estimated_cost) > 0 ? 'text-end pe-3' : 'text-center' %> fw-bold text-info" style="font-size: 0.92rem;">
+                <%= parseFloat(repair.estimated_cost) > 0 ? parseFloat(repair.estimated_cost).toLocaleString('th-TH', {minimumFractionDigits: 2}) : '-' %>
+              </td>
+              <td class="text-center">
+                <a href="/repairs/detail/<%= repair.id %>" class="btn btn-sm btn-glass-primary">
+                  <i class="fa-solid fa-magnifying-glass me-1"></i> จัดการ / ดูรายละเอียด
+                </a>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div id="paginationContainer">
+    <% if (totalPages > 1) { %>
+      <nav class="d-flex justify-content-center mt-4">
+        <ul class="pagination pagination-sm m-0">
+          <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
+            <a class="page-link bg-dark border-secondary text-light" href="/repairs?search=<%= search %>&status=<%= selectedStatuses.join(',') %>&page=<%= currentPage - 1 %>">ก่อนหน้า</a>
+          </li>
+          <% for(let i = 1; i <= totalPages; i++) { %>
+            <li class="page-item <%= currentPage === i ? 'active' : '' %>">
+              <a class="page-link <%= currentPage === i ? 'bg-primary border-primary text-light' : 'bg-dark border-secondary text-light' %>" href="/repairs?search=<%= search %>&status=<%= selectedStatuses.join(',') %>&page=<%= i %>"><%= i %></a>
+            </li>
+          <% } %>
+          <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
+            <a class="page-link bg-dark border-secondary text-light" href="/repairs?search=<%= search %>&status=<%= selectedStatuses.join(',') %>&page=<%= currentPage + 1 %>">ถัดไป</a>
+          </li>
+        </ul>
+      </nav>
+    <% } %>
+  </div>
+</div>
+
+<!-- ==========================================
+     MODALS
+     ========================================== -->
+
+<!-- Receive Car Modal (Add Repair) -->
+<div class="modal fade" id="receiveCarModal" tabindex="-1" aria-labelledby="receiveCarModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content text-light" style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 16px; backdrop-filter: var(--glass-blur);">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title" id="receiveCarModalLabel"><i class="fa-solid fa-plus text-success me-2"></i>รับรถเข้าซ่อม (เปิดใบสั่งซ่อมใหม่)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="receiveCarForm" enctype="multipart/form-data">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-12">
+              <label for="addVehicleId" class="form-label">เลือกรถยนต์ที่ต้องการเปิดใบซ่อม <span class="text-danger">*</span></label>
+              <select class="form-select form-glass text-light" id="addVehicleId" required>
+                <option value="" disabled selected>-- ค้นหาทะเบียนรถยนต์ --</option>
+                <% vehicles.forEach(vehicle => { %>
+                  <option value="<%= vehicle.id %>"><%= vehicle.license_plate %> (<%= vehicle.brand %> - <%= vehicle.model %>) - เจ้าของ: <%= vehicle.owner_name %></option>
+                <% }) %>
+              </select>
+              <div class="form-text text-muted">หากไม่พบทะเบียนรถยนต์ กรุณาไปลงทะเบียนรถยนต์คันดังกล่าวที่หน้า "ข้อมูลรถยนต์" ก่อน</div>
+            </div>
+            
+            <div class="col-md-12">
+              <label for="addDescription" class="form-label">รายละเอียดอาการเสีย / แจ้งซ่อม <span class="text-danger">*</span></label>
+              <textarea class="form-control form-glass text-light" id="addDescription" rows="4" required placeholder="อธิบายปัญหาที่แจ้ง เช่น เครื่องสะดุด เร่งไม่ขึ้น แอร์มีกลิ่นอับ และงานเช็คระยะทั่วไป..."></textarea>
+            </div>
+            
+            <div class="col-md-12">
+              <label for="addCarPhotoBefore" class="form-label">รูปภาพสภาพรถยนต์ก่อนรับซ่อม (Before Photo)</label>
+              <input type="file" class="form-control form-glass text-light" id="addCarPhotoBefore" accept="image/*">
+              <div class="form-text text-muted">ขนาดไฟล์สูงสุดไม่เกิน 5MB (รองรับเฉพาะไฟล์ PNG, JPG, JPEG)</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-secondary bg-opacity-25 border-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-glass-success">เปิดใบสั่งซ่อม</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    
+    // Submit Add Repair Form using FormData (since it contains file upload)
+    const receiveForm = document.getElementById('receiveCarForm');
+    receiveForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData();
+      formData.append('vehicle_id', document.getElementById('addVehicleId').value);
+      formData.append('description', document.getElementById('addDescription').value);
+      
+      const photoFile = document.getElementById('addCarPhotoBefore').files[0];
+      if (photoFile) {
+        formData.append('car_photo_before', photoFile);
+      }
+      
+      fetch('/repairs/add', {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          window.location.href = '/repairs/detail/' + data.repairId; // Redirect to detail page of created repair
+        } else {
+          alert('ผิดพลาด: ' + data.message);
+        }
+      })
+      .catch(err => {
+        console.error('Fetch Add Repair Error:', err);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+      });
+    });
+
+    // ==========================================
+    // AJAX Live Filtering & Scroll Preservation
+    // ==========================================
+    const statusValInput = document.getElementById('statusFilterVal');
+    const filterForm = document.getElementById('repairFilterForm');
+
+    function fetchRepairsData(url) {
+      const container = document.getElementById('repairsContainer');
+      if (container) container.style.opacity = '0.65';
+
+      fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+
+          // Swap Repairs Table and Pagination
+          const newContainer = doc.getElementById('repairsContainer');
+          if (newContainer && container) {
+            container.innerHTML = newContainer.innerHTML;
+            container.style.opacity = '1';
+          }
+
+          // Swap select dropdown options
+          const newSelect = doc.getElementById('statusFilter');
+          const currentSelect = document.getElementById('statusFilter');
+          if (newSelect && currentSelect) {
+            currentSelect.innerHTML = newSelect.innerHTML;
+          }
+
+          // Update browser history URL path in address bar
+          window.history.pushState({ path: url }, '', url);
+        })
+        .catch(err => {
+          console.error('Fetch Repairs Error:', err);
+          if (container) container.style.opacity = '1';
+        });
+    }
+
+    // Helper to build URL with all filters
+    function buildRepairsUrl() {
+      const searchVal = encodeURIComponent(filterForm.querySelector('input[name="search"]').value);
+      const statusFilter = document.getElementById('statusFilter');
+      const statusVal = statusFilter ? encodeURIComponent(statusFilter.value) : '';
+      return `/repairs?search=${searchVal}&status=${statusVal}`;
+    }
+
+    // Foolproof Search submit handler (Intercept form submit)
+    filterForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      fetchRepairsData(buildRepairsUrl());
+    });
+
+    // Foolproof click handler on the Search button
+    const searchBtn = filterForm.querySelector('button[type="submit"]');
+    if (searchBtn) {
+      searchBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        fetchRepairsData(buildRepairsUrl());
+      });
+    }
+
+    // Foolproof enter-key handler in search input
+    const searchInput = filterForm.querySelector('input[name="search"]');
+    if (searchInput) {
+      searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          fetchRepairsData(buildRepairsUrl());
+        }
+      });
+    }
+
+    // Intercept status select change (Auto-submit!)
+    const statusSelect = document.getElementById('statusFilter');
+    if (statusSelect) {
+      statusSelect.addEventListener('change', function() {
+        fetchRepairsData(buildRepairsUrl());
+      });
+    }
+
+    // Intercept pagination links via event delegation
+    const repairsContainer = document.getElementById('repairsContainer');
+    if (repairsContainer) {
+      repairsContainer.addEventListener('click', function(e) {
+        const pageLink = e.target.closest('.page-link');
+        if (pageLink) {
+          e.preventDefault();
+          const url = pageLink.getAttribute('href');
+          if (url && url !== '#') {
+            fetchRepairsData(url);
+          }
+        }
+      });
+    }
+
+  });
+</script>
+
+<%- include('../partials/footer') %>

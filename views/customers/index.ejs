@@ -1,0 +1,500 @@
+<%- include('../partials/header') %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="page-title">จัดการข้อมูลลูกค้า</h2>
+  <button class="btn btn-glass-success" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
+    <i class="fa-solid fa-plus me-1"></i> เพิ่มลูกค้าใหม่
+  </button>
+</div>
+
+<!-- Search Bar & Filters -->
+<div class="glass-card mb-4 py-3">
+  <form action="/customers" method="GET" id="customerFilterForm" class="row g-3 align-items-end">
+    <!-- Search Input -->
+    <div class="col-lg-3 col-md-4 col-sm-12">
+      <label class="form-label text-muted small"><i class="fa-solid fa-user me-1 text-info"></i> ค้นหาข้อมูลลูกค้า</label>
+      <input type="text" class="form-control form-glass" name="search" value="<%= search %>" placeholder="ค้นหาชื่อลูกค้า, เบอร์โทรศัพท์, อีเมล..." style="border-radius: 8px;">
+    </div>
+    
+    <!-- Registration Period Filter Dropdown -->
+    <div class="col-lg-3 col-md-4 col-sm-6">
+      <label class="form-label text-muted small"><i class="fa-solid fa-filter me-1 text-warning"></i> กรองตามระยะเวลา</label>
+      <select class="form-select form-glass text-light" name="period" id="periodFilter">
+        <option value="" <%= !selectedPeriod ? 'selected' : '' %>>-- แสดงทั้งหมด --</option>
+        <option value="today" <%= selectedPeriod === 'today' ? 'selected' : '' %>>ลงทะเบียนวันนี้</option>
+        <option value="this_week" <%= selectedPeriod === 'this_week' ? 'selected' : '' %>>ลงทะเบียนสัปดาห์นี้</option>
+        <option value="this_month" <%= selectedPeriod === 'this_month' ? 'selected' : '' %>>ลงทะเบียนเดือนนี้</option>
+        <option value="last_month" <%= selectedPeriod === 'last_month' ? 'selected' : '' %>>ลงทะเบียนเดือนที่แล้ว</option>
+        <option value="this_year" <%= selectedPeriod === 'this_year' ? 'selected' : '' %>>ลงทะเบียนปีนี้</option>
+        <option value="custom" <%= selectedPeriod === 'custom' ? 'selected' : '' %>>เลือกกำหนดช่วงเวลาเอง...</option>
+      </select>
+    </div>
+
+    <!-- Custom Date From -->
+    <div class="col-lg-2 col-md-4 col-sm-6 <%= selectedPeriod === 'custom' ? '' : 'd-none' %>" id="customDateFromGroup">
+      <label class="form-label text-muted small"><i class="fa-solid fa-calendar me-1 text-info"></i> จากวันที่</label>
+      <input type="date" class="form-control form-glass text-light" name="date_from" id="dateFromFilter" value="<%= dateFrom || '' %>">
+    </div>
+
+    <!-- Custom Date To -->
+    <div class="col-lg-2 col-md-4 col-sm-6 <%= selectedPeriod === 'custom' ? '' : 'd-none' %>" id="customDateToGroup">
+      <label class="form-label text-muted small"><i class="fa-solid fa-calendar me-1 text-info"></i> ถึงวันที่</label>
+      <input type="date" class="form-control form-glass text-light" name="date_to" id="dateToFilter" value="<%= dateTo || '' %>">
+    </div>
+
+    <!-- Search Button -->
+    <div class="col-lg-2 col-md-4 col-sm-12 d-grid">
+      <button type="submit" class="btn btn-glass-primary">
+        <i class="fa-solid fa-magnifying-glass me-1"></i> ค้นหาข้อมูล
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Customers Table -->
+<div class="glass-card" id="customersContainer">
+  <div class="table-responsive">
+    <table class="table-excel text-light">
+      <thead>
+        <tr>
+          <th class="text-center" style="width: 4%;">ลำดับ</th>
+          <th class="text-center" style="width: 22%;">ชื่อ-นามสกุล</th>
+          <th class="text-center" style="width: 14%;">เบอร์โทรศัพท์</th>
+          <th style="width: 18%;">อีเมล</th>
+          <th style="width: 18%;">ที่อยู่</th>
+          <th class="text-center" style="width: 12%;">วันที่ลงทะเบียน</th>
+          <th class="text-center" style="width: 12%;">การจัดการ</th>
+        </tr>
+      </thead>
+      <tbody id="customersTbody">
+        <% if (customers.length === 0) { %>
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">ไม่พบข้อมูลลูกค้าในระบบ</td>
+          </tr>
+        <% } else { %>
+          <% customers.forEach((customer, index) => { %>
+            <tr>
+              <td class="text-center"><%= index + 1 + (currentPage - 1) * 10 %></td>
+              <td class="text-center" title="<%= customer.fullname %>">
+                <div class="fw-bold text-light"><%= customer.fullname %></div>
+              </td>
+              <td class="text-center">
+                <a href="tel:<%= customer.phone %>" class="text-info font-monospace text-decoration-none small">
+                  <%= customer.phone %>
+                </a>
+              </td>
+              <td class="<%= !customer.email ? 'text-center' : '' %>" title="<%= customer.email || '' %>">
+                <% if (customer.email) { %>
+                  <div class="small font-monospace text-light text-opacity-80"><%= customer.email %></div>
+                <% } else { %>
+                  <span class="text-muted font-monospace">-</span>
+                <% } %>
+              </td>
+              <td class="<%= !customer.address ? 'text-center' : '' %>">
+                <% if (customer.address) { %>
+                  <div class="text-light text-opacity-80 small" title="<%= customer.address %>" style="width: 100%; overflow: hidden; white-space: nowrap;">
+                    <%= customer.address %>
+                  </div>
+                <% } else { %>
+                  <span class="text-muted font-monospace">-</span>
+                <% } %>
+              </td>
+              <td class="text-center small text-muted"><%= new Date(customer.created_at).toLocaleDateString('th-TH') %></td>
+              <td class="text-center">
+                <button class="btn btn-sm btn-outline-info me-1 edit-customer-btn" 
+                        data-id="<%= customer.id %>"
+                        data-fullname="<%= customer.fullname %>"
+                        data-phone="<%= customer.phone %>"
+                        data-email="<%= customer.email %>"
+                        data-address="<%= customer.address %>"
+                        data-lineid="<%= customer.line_id %>"
+                        title="แก้ไข">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger delete-customer-btn" 
+                        data-id="<%= customer.id %>"
+                        data-fullname="<%= customer.fullname %>"
+                        title="ลบ">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div id="paginationContainer">
+    <% if (totalPages > 1) { %>
+      <nav class="d-flex justify-content-center mt-4">
+        <ul class="pagination pagination-sm m-0">
+          <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
+            <a class="page-link bg-dark border-secondary text-light" href="/customers?search=<%= search %>&page=<%= currentPage - 1 %>">ก่อนหน้า</a>
+          </li>
+          <% for(let i = 1; i <= totalPages; i++) { %>
+            <li class="page-item <%= currentPage === i ? 'active' : '' %>">
+              <a class="page-link <%= currentPage === i ? 'bg-primary border-primary text-light' : 'bg-dark border-secondary text-light' %>" href="/customers?search=<%= search %>&page=<%= i %>"><%= i %></a>
+            </li>
+          <% } %>
+          <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
+            <a class="page-link bg-dark border-secondary text-light" href="/customers?search=<%= search %>&page=<%= currentPage + 1 %>">ถัดไป</a>
+          </li>
+        </ul>
+      </nav>
+    <% } %>
+  </div>
+</div>
+
+<!-- ==========================================
+     MODALS
+     ========================================== -->
+
+<!-- Add Customer Modal -->
+<div class="modal fade" id="addCustomerModal" tabindex="-1" aria-labelledby="addCustomerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-light" style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 16px; backdrop-filter: var(--glass-blur);">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title" id="addCustomerModalLabel"><i class="fa-solid fa-user-plus text-success me-2"></i>เพิ่มลูกค้าใหม่</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="addCustomerForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="addFullname" class="form-label">ชื่อ-นามสกุล <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-glass text-light" id="addFullname" required placeholder="เช่น นายวิชัย รวยรุ่ง">
+          </div>
+          <div class="mb-3">
+            <label for="addPhone" class="form-label">เบอร์โทรศัพท์ <span class="text-danger">*</span></label>
+            <input type="tel" class="form-control form-glass text-light" id="addPhone" required placeholder="เช่น 0823456789">
+          </div>
+          <div class="mb-3">
+            <label for="addEmail" class="form-label">อีเมล</label>
+            <input type="email" class="form-control form-glass text-light" id="addEmail" placeholder="เช่น wichai@email.com">
+          </div>
+          <div class="mb-3">
+            <label for="addAddress" class="form-label">ที่อยู่</label>
+            <textarea class="form-control form-glass text-light" id="addAddress" rows="3" placeholder="รายละเอียดที่อยู่เพื่อติดต่อออกใบเสร็จ..."></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="addCustomerLineId" class="form-label text-light">LINE User ID</label>
+            <input type="text" class="form-control form-glass text-light" id="addCustomerLineId" placeholder="กรอก LINE User ID สำหรับแจ้งเตือนตรงถึงลูกค้า...">
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-secondary bg-opacity-25 border-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-glass-success">บันทึกข้อมูล</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Customer Modal -->
+<div class="modal fade" id="editCustomerModal" tabindex="-1" aria-labelledby="editCustomerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-light" style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 16px; backdrop-filter: var(--glass-blur);">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title" id="editCustomerModalLabel"><i class="fa-solid fa-user-pen text-info me-2"></i>แก้ไขข้อมูลลูกค้า</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editCustomerForm">
+        <input type="hidden" id="editCustomerId">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editFullname" class="form-label">ชื่อ-นามสกุล <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-glass text-light" id="editFullname" required>
+          </div>
+          <div class="mb-3">
+            <label for="editPhone" class="form-label">เบอร์โทรศัพท์ <span class="text-danger">*</span></label>
+            <input type="tel" class="form-control form-glass text-light" id="editPhone" required>
+          </div>
+          <div class="mb-3">
+            <label for="editEmail" class="form-label">อีเมล</label>
+            <input type="email" class="form-control form-glass text-light" id="editEmail">
+          </div>
+          <div class="mb-3">
+            <label for="editAddress" class="form-label">ที่อยู่</label>
+            <textarea class="form-control form-glass text-light" id="editAddress" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="editCustomerLineId" class="form-label text-light">LINE User ID</label>
+            <input type="text" class="form-control form-glass text-light" id="editCustomerLineId" placeholder="กรอก LINE User ID สำหรับแจ้งเตือนตรงถึงลูกค้า...">
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-secondary bg-opacity-25 border-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-glass-primary">อัปเดตข้อมูล</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Fetch Actions JS -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    
+    // 1. Add Customer Form Submit
+    const addForm = document.getElementById('addCustomerForm');
+    addForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const payload = {
+        fullname: document.getElementById('addFullname').value,
+        phone: document.getElementById('addPhone').value,
+        email: document.getElementById('addEmail').value,
+        address: document.getElementById('addAddress').value,
+        line_id: document.getElementById('addCustomerLineId').value
+      };
+      
+      fetch('/customers/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          window.location.reload();
+        } else {
+          alert('ผิดพลาด: ' + data.message);
+        }
+      })
+      .catch(err => {
+        console.error('Fetch Add Customer Error:', err);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+      });
+    });
+
+    // 2. Edit Button Click (Open Modal & Populate)
+    const editBtns = document.querySelectorAll('.edit-customer-btn');
+    const editModal = new bootstrap.Modal(document.getElementById('editCustomerModal'));
+    
+    editBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.getElementById('editCustomerId').value = this.dataset.id;
+        document.getElementById('editFullname').value = this.dataset.fullname;
+        document.getElementById('editPhone').value = this.dataset.phone;
+        document.getElementById('editEmail').value = this.dataset.email === 'null' ? '' : this.dataset.email;
+        document.getElementById('editAddress').value = this.dataset.address === 'null' ? '' : this.dataset.address;
+        document.getElementById('editCustomerLineId').value = this.dataset.lineid === 'null' ? '' : this.dataset.lineid;
+        
+        editModal.show();
+      });
+    });
+
+    // 3. Edit Form Submit
+    const editForm = document.getElementById('editCustomerForm');
+    editForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const id = document.getElementById('editCustomerId').value;
+      const payload = {
+        fullname: document.getElementById('editFullname').value,
+        phone: document.getElementById('editPhone').value,
+        email: document.getElementById('editEmail').value,
+        address: document.getElementById('editAddress').value,
+        line_id: document.getElementById('editCustomerLineId').value
+      };
+      
+      fetch('/customers/edit/' + id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          window.location.reload();
+        } else {
+          alert('ผิดพลาด: ' + data.message);
+        }
+      })
+      .catch(err => {
+        console.error('Fetch Edit Customer Error:', err);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+      });
+    });
+
+    // ==========================================
+    // AJAX Live Filtering & Scroll Preservation
+    // ==========================================
+    const filterForm = document.getElementById('customerFilterForm');
+
+    function fetchCustomersData(url) {
+      const container = document.getElementById('customersContainer');
+      if (container) container.style.opacity = '0.65';
+
+      fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+
+          // Swap Customers Container
+          const newContainer = doc.getElementById('customersContainer');
+          if (newContainer && container) {
+            container.innerHTML = newContainer.innerHTML;
+            container.style.opacity = '1';
+            // Re-attach edit and delete listeners on the new content!
+            attachCustomerListeners();
+          }
+
+          // Update URL in address bar
+          window.history.pushState({ path: url }, '', url);
+        })
+        .catch(err => {
+          console.error('Fetch Customers Error:', err);
+          if (container) container.style.opacity = '1';
+        });
+    }
+
+    function attachCustomerListeners() {
+      // Re-attach delete listeners
+      const deleteBtns = document.querySelectorAll('.delete-customer-btn');
+      deleteBtns.forEach(btn => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+      });
+
+      const freshDeleteBtns = document.querySelectorAll('.delete-customer-btn');
+      freshDeleteBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+          const id = this.dataset.id;
+          const name = this.dataset.fullname;
+          
+          if (confirm(`คุณต้องการลบข้อมูลลูกค้า "${name}" ใช่หรือไม่?\nการลบนี้จะรวมถึงข้อมูลที่เกี่ยวข้องด้วย`)) {
+            fetch('/customers/delete/' + id, {
+              method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                alert(data.message);
+                fetchCustomersData(buildCustomerUrl());
+              } else {
+                alert('ไม่สามารถลบได้: ' + data.message);
+              }
+            })
+            .catch(err => {
+              console.error('Fetch Delete Customer Error:', err);
+              alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+            });
+          }
+        });
+      });
+
+      // Re-attach edit modal button listeners
+      const editBtns = document.querySelectorAll('.edit-customer-btn');
+      editBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+          // Fill form data as normal
+          document.getElementById('editId').value = this.dataset.id;
+          document.getElementById('editFullname').value = this.dataset.fullname;
+          document.getElementById('editPhone').value = this.dataset.phone;
+          document.getElementById('editEmail').value = this.dataset.email || '';
+          document.getElementById('editAddress').value = this.dataset.address || '';
+          
+          const editModal = new bootstrap.Modal(document.getElementById('editCustomerModal'));
+          editModal.show();
+        });
+      });
+    }
+
+    // Helper to build URL with all filters
+    function buildCustomerUrl() {
+      const searchVal = encodeURIComponent(filterForm.querySelector('input[name="search"]').value);
+      const periodFilter = document.getElementById('periodFilter');
+      const periodVal = periodFilter ? encodeURIComponent(periodFilter.value) : '';
+      const dateFromVal = document.getElementById('dateFromFilter') ? encodeURIComponent(document.getElementById('dateFromFilter').value) : '';
+      const dateToVal = document.getElementById('dateToFilter') ? encodeURIComponent(document.getElementById('dateToFilter').value) : '';
+      return `/customers?search=${searchVal}&period=${periodVal}&date_from=${dateFromVal}&date_to=${dateToVal}`;
+    }
+
+    // Intercept form submit
+    filterForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      fetchCustomersData(buildCustomerUrl());
+    });
+
+    // Foolproof search button click
+    const searchBtn = filterForm.querySelector('button[type="submit"]');
+    if (searchBtn) {
+      searchBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        fetchCustomersData(buildCustomerUrl());
+      });
+    }
+
+    // Intercept Enter keypress in search input
+    const searchInput = filterForm.querySelector('input[name="search"]');
+    if (searchInput) {
+      searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          fetchCustomersData(buildCustomerUrl());
+        }
+      });
+    }
+
+    // Intercept period dropdown change (Toggles input groups & submits)
+    const periodFilterSelect = document.getElementById('periodFilter');
+    const customDateFromGroup = document.getElementById('customDateFromGroup');
+    const customDateToGroup = document.getElementById('customDateToGroup');
+
+    if (periodFilterSelect && customDateFromGroup && customDateToGroup) {
+      periodFilterSelect.addEventListener('change', function() {
+        if (this.value === 'custom') {
+          customDateFromGroup.classList.remove('d-none');
+          customDateToGroup.classList.remove('d-none');
+        } else {
+          customDateFromGroup.classList.add('d-none');
+          customDateToGroup.classList.add('d-none');
+          // Clear custom date inputs
+          const dateFromFilter = document.getElementById('dateFromFilter');
+          const dateToFilter = document.getElementById('dateToFilter');
+          if (dateFromFilter) dateFromFilter.value = '';
+          if (dateToFilter) dateToFilter.value = '';
+          
+          fetchCustomersData(buildCustomerUrl());
+        }
+      });
+    }
+
+    // Intercept custom date pickers change
+    const dateFromFilter = document.getElementById('dateFromFilter');
+    const dateToFilter = document.getElementById('dateToFilter');
+    [dateFromFilter, dateToFilter].forEach(el => {
+      if (el) {
+        el.addEventListener('change', function() {
+          fetchCustomersData(buildCustomerUrl());
+        });
+      }
+    });
+
+    // Intercept pagination clicks via event delegation
+    const customersContainer = document.getElementById('customersContainer');
+    if (customersContainer) {
+      customersContainer.addEventListener('click', function(e) {
+        const pageLink = e.target.closest('.page-link');
+        if (pageLink) {
+          e.preventDefault();
+          const url = pageLink.getAttribute('href');
+          if (url && url !== '#') {
+            fetchCustomersData(url);
+          }
+        }
+      });
+    }
+
+    // Initial listeners
+    attachCustomerListeners();
+
+  });
+</script>
+
+<%- include('../partials/footer') %>

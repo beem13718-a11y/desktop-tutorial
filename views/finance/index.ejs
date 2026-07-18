@@ -1,0 +1,887 @@
+<%- include('../partials/header') %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="page-title">ระบบการเงินและบัญชี</h2>
+  <div>
+    <button class="btn btn-glass-success me-2" data-bs-toggle="modal" data-bs-target="#recordIncomeModal">
+      <i class="fa-solid fa-cash-register me-1"></i> รับชำระเงินค่าซ่อม
+    </button>
+    <button class="btn btn-glass-primary" data-bs-toggle="modal" data-bs-target="#recordExpenseModal">
+      <i class="fa-solid fa-minus-circle me-1"></i> บันทึกรายจ่ายอู่
+    </button>
+  </div>
+</div>
+
+<div id="financesContainer">
+  <!-- Hidden data store for dynamic ChartJS updates -->
+  <div id="chartDataStore" 
+       data-labels='<%= JSON.stringify(charts.labels) %>' 
+       data-income='<%= JSON.stringify(charts.income) %>' 
+       data-expense='<%= JSON.stringify(charts.expense) %>' 
+       data-methods='<%= JSON.stringify(charts.methods) %>'>
+  </div>
+
+  <!-- Financial Summary Cards -->
+  <div class="row g-4 mb-4">
+  <!-- Total Income (Realized) -->
+  <div class="col-xl-3 col-md-6">
+    <div class="glass-card stat-card">
+      <div>
+        <div class="text-muted small fw-semibold">รายรับรวม</div>
+        <div class="stat-number text-success"><%= summary.income.toLocaleString('th-TH', {minimumFractionDigits: 2}) %> ฿</div>
+      </div>
+      <div class="stat-icon success">
+        <i class="fa-solid fa-arrow-trend-up"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Pending Income (Unrealized) -->
+  <div class="col-xl-3 col-md-6">
+    <div class="glass-card stat-card">
+      <div>
+        <div class="text-muted small fw-semibold">ค้างชำระ</div>
+        <div class="stat-number text-warning"><%= summary.pending.toLocaleString('th-TH', {minimumFractionDigits: 2}) %> ฿</div>
+      </div>
+      <div class="stat-icon warning">
+        <i class="fa-solid fa-clock"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Expense -->
+  <div class="col-xl-3 col-md-6">
+    <div class="glass-card stat-card">
+      <div>
+        <div class="text-muted small fw-semibold">รายจ่ายรวม</div>
+        <div class="stat-number text-danger"><%= summary.expense.toLocaleString('th-TH', {minimumFractionDigits: 2}) %> ฿</div>
+      </div>
+      <div class="stat-icon text-danger" style="background: rgba(255, 23, 68, 0.1); border-color: rgba(255, 23, 68, 0.2);">
+        <i class="fa-solid fa-arrow-trend-down"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Net Profit (Income - Expense) -->
+  <div class="col-xl-3 col-md-6">
+    <div class="glass-card stat-card">
+      <div>
+        <div class="text-muted small fw-semibold">กำไรสุทธิ</div>
+        <div class="stat-number <%= summary.profit >= 0 ? 'text-info' : 'text-warning' %>">
+          <%= summary.profit.toLocaleString('th-TH', {minimumFractionDigits: 2}) %> ฿
+        </div>
+      </div>
+      <div class="stat-icon <%= summary.profit >= 0 ? 'info' : 'warning' %>">
+        <i class="fa-solid fa-wallet"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Collapsible Financial Analytics Section -->
+<div class="mb-4">
+  <button class="btn btn-outline-warning btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#financeAnalyticsCollapse" aria-expanded="false" aria-controls="financeAnalyticsCollapse">
+    <i class="fa-solid fa-chart-line me-1"></i> แสดง/ซ่อนรายงานกราฟวิเคราะห์การเงิน
+  </button>
+  
+  <div class="collapse show mt-3" id="financeAnalyticsCollapse">
+    <!-- Integrated Quick Ranges Control Bar -->
+    <div class="glass-card mb-3 py-2 px-3">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="text-light fw-semibold small">
+          <i class="fa-solid fa-calendar-check text-warning me-1"></i> ช่วงเวลารายงานด่วน:
+        </div>
+        <div class="btn-group btn-group-sm" role="group" style="width: auto; max-width: 100%;">
+          <a href="/finances?period=today&filter_option=<%= filters.filterOption %>&search=<%= filters.search %>" 
+             class="btn btn-outline-warning <%= filters.period === 'today' ? 'bg-warning text-dark fw-bold' : '' %>" style="border-color: #FFC400 !important; color: <%= filters.period === 'today' ? '#000000' : '#FFC400' %> !important;">วันนี้</a>
+          <a href="/finances?period=this_week&filter_option=<%= filters.filterOption %>&search=<%= filters.search %>" 
+             class="btn btn-outline-warning <%= filters.period === 'this_week' ? 'bg-warning text-dark fw-bold' : '' %>" style="border-color: #FFC400 !important; color: <%= filters.period === 'this_week' ? '#000000' : '#FFC400' %> !important;">สัปดาห์นี้</a>
+          <a href="/finances?period=this_month&filter_option=<%= filters.filterOption %>&search=<%= filters.search %>" 
+             class="btn btn-outline-warning <%= filters.period === 'this_month' ? 'bg-warning text-dark fw-bold' : '' %>" style="border-color: #FFC400 !important; color: <%= filters.period === 'this_month' ? '#000000' : '#FFC400' %> !important;">เดือนนี้</a>
+          <a href="/finances?period=this_quarter&filter_option=<%= filters.filterOption %>&search=<%= filters.search %>" 
+             class="btn btn-outline-warning <%= filters.period === 'this_quarter' ? 'bg-warning text-dark fw-bold' : '' %>" style="border-color: #FFC400 !important; color: <%= filters.period === 'this_quarter' ? '#000000' : '#FFC400' %> !important;">ไตรมาสนี้</a>
+          <a href="/finances" class="btn btn-outline-secondary">ล้างการกรอง</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <!-- Chart 1: Revenue vs Expense Trend -->
+      <div class="col-lg-8">
+        <div class="glass-card" style="height: 320px;">
+          <h6 class="text-light mb-3"><i class="fa-solid fa-chart-area me-2 text-warning"></i>แนวโน้มรายรับ - รายจ่ายสะสม (<%= filters.period === 'today' ? 'วันนี้' : filters.period === 'this_week' ? 'สัปดาห์นี้' : filters.period === 'this_quarter' ? 'ไตรมาสนี้' : 'เดือนนี้' %>)</h6>
+          <div style="height: 240px; position: relative;">
+            <canvas id="financeTrendChart"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Chart 2: Income by Payment Method -->
+      <div class="col-lg-4">
+        <div class="glass-card" style="height: 320px;">
+          <h6 class="text-light mb-3"><i class="fa-solid fa-chart-pie me-2 text-info"></i>สัดส่วนช่องทางรับเงิน (การกรองปัจจุบัน)</h6>
+          <div style="height: 240px; position: relative;">
+            <canvas id="paymentMethodChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Advanced Search Filters -->
+<div class="glass-card mb-4 py-3">
+  <form action="/finances" method="GET" id="financeFilterForm" class="row g-3 align-items-end">
+    <!-- Keep date period -->
+    <input type="hidden" name="period" value="<%= filters.period %>">
+
+    <!-- Smart Search Bar -->
+    <div class="col-md-5 col-sm-6">
+      <label class="form-label text-muted small"><i class="fa-solid fa-brain me-1 text-info"></i> ช่องค้นหาอัจฉริยะ</label>
+      <input type="text" class="form-control form-glass" name="search" value="<%= filters.search %>" placeholder="ค้นหาด้วย: เลขที่ใบเสร็จ, ชื่อลูกค้า, ทะเบียน..." style="border-radius: 8px;">
+    </div>
+
+    <!-- Dropdown Selector -->
+    <div class="col-md-4 col-sm-6">
+      <label class="form-label text-muted small"><i class="fa-solid fa-filter me-1 text-warning"></i> เลือกกรองตามประเภท/สถานะ/ช่องทางการเงิน</label>
+      <select class="form-select form-glass text-light" name="filter_option" id="financeFilterSelect">
+        <option value="" <%= !filters.filterOption ? 'selected' : '' %>>-- แสดงรายการทั้งหมด --</option>
+        
+        <!-- ประเภทรายการ -->
+        <option value="type:income" <%= filters.filterOption === 'type:income' ? 'selected' : '' %>>รายรับ - เงินค่าซ่อมและค่าอะไหล่จากลูกค้า</option>
+        <option value="type:expense" <%= filters.filterOption === 'type:expense' ? 'selected' : '' %>>รายจ่าย - ค่าน้ำไฟ, อะไหล่เข้าสต็อก, ค่าแรงช่าง</option>
+        
+        <!-- สถานะการชำระเงิน -->
+        <option value="status:paid" <%= filters.filterOption === 'status:paid' ? 'selected' : '' %>>ชำระเงินแล้ว</option>
+        <option value="status:pending" <%= filters.filterOption === 'status:pending' ? 'selected' : '' %>>ค้างชำระ / รอชำระ - เช็กบิลที่ค้างชำระ</option>
+        <option value="status:installment" <%= filters.filterOption === 'status:installment' ? 'selected' : '' %>>ผ่อนชำระ / จ่ายบางส่วน</option>
+        <option value="status:cancelled" <%= filters.filterOption === 'status:cancelled' ? 'selected' : '' %>>ยกเลิกบิล / คืนเงิน</option>
+        
+        <!-- ช่องทางการชำระเงิน -->
+        <option value="method:cash" <%= filters.filterOption === 'method:cash' ? 'selected' : '' %>>เงินสด</option>
+        <option value="method:transfer" <%= filters.filterOption === 'method:transfer' ? 'selected' : '' %>>โอนผ่านธนาคาร</option>
+        <option value="method:qr" <%= filters.filterOption === 'method:qr' ? 'selected' : '' %>>สแกน QR Code</option>
+      </select>
+    </div>
+
+    <!-- Search Button -->
+    <div class="col-md-3 col-sm-12 d-grid">
+      <button type="submit" class="btn btn-glass-primary">
+        <i class="fa-solid fa-magnifying-glass me-1"></i> ค้นหาข้อมูล
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Transactions Table -->
+<div class="glass-card">
+  <h5 class="text-light mb-3"><i class="fa-solid fa-list-check me-2"></i>ประวัติรายการเงินและประวัติบัญชี</h5>
+  <div class="table-responsive">
+    <table class="table-excel text-light">
+      <thead>
+        <tr>
+          <th style="width: 14%;">เลขที่เอกสาร</th>
+          <th class="text-center" style="width: 10%;">วันที่บันทึก</th>
+          <th style="width: 28%;">รายละเอียดธุรกรรม</th>
+          <th class="text-center" style="width: 8%;">ประเภท</th>
+          <th class="text-center" style="width: 12%;">วิธีชำระเงิน</th>
+          <th class="text-center" style="width: 8%;">สถานะ</th>
+          <th class="text-end" style="width: 12%;">จำนวนเงิน (บาท)</th>
+          <th class="text-center" style="width: 8%;">จัดการ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (transactions.length === 0) { %>
+          <tr>
+            <td colspan="8" class="text-center text-muted py-4">ไม่พบรายการทางการเงินตามข้อกำหนดการค้นหา</td>
+          </tr>
+        <% } else { %>
+          <% transactions.forEach(t => { %>
+            <tr>
+              <td class="font-monospace fw-bold">#INV-<%= t.repair_id ? t.repair_id : 'GEN-' + t.id %></td>
+              <td class="text-center"><%= new Date(t.transaction_date).toLocaleDateString('th-TH') %></td>
+              <td>
+                <div class="fw-semibold text-light mb-1.5" title="<%= t.description %>" style="width: 100%; overflow: hidden; white-space: nowrap;"><%= t.description %></div>
+                <% if (t.repair_id) { %>
+                  <div class="d-flex flex-column gap-1 mt-1 font-monospace" style="font-size: 0.76rem; max-width: 250px;">
+                    <div class="d-flex align-items-center text-muted">
+                      <span class="me-1.5 text-info" style="width: 55px; display: inline-block;">ลูกค้า:</span>
+                      <span class="text-light text-opacity-90 fw-bold"><%= t.customer_name %></span>
+                    </div>
+                    <div class="d-flex align-items-center text-muted">
+                      <span class="me-1.5 text-warning" style="width: 55px; display: inline-block;">ทะเบียน:</span>
+                      <span class="badge bg-light text-dark px-1.5 py-0.5 font-monospace" style="font-size: 0.72rem; border: 1px solid rgba(0,0,0,0.1);"><%= t.license_plate %></span>
+                    </div>
+                    <div class="d-flex align-items-center text-muted">
+                      <span class="me-1.5 text-success" style="width: 55px; display: inline-block;">โทร:</span>
+                      <span><%= t.customer_phone %></span>
+                    </div>
+                  </div>
+                <% } %>
+              </td>
+              <td class="text-center">
+                <% if (t.type === 'income') { %>
+                  <span class="badge text-dark font-weight-bold" style="background-color: #00E676 !important; font-size: 0.78rem;">รายรับ</span>
+                <% } else { %>
+                  <span class="badge text-light font-weight-bold" style="background-color: #FF1744 !important; font-size: 0.78rem;">รายจ่าย</span>
+                <% } %>
+              </td>
+              <td class="text-center">
+                <% if (t.payment_method === 'cash') { %>
+                  <span class="text-light"><i class="fa-solid fa-money-bill-wave text-success me-1"></i> เงินสด</span>
+                <% } else if (t.payment_method === 'transfer') { %>
+                  <span class="text-light"><i class="fa-solid fa-building-columns text-info me-1"></i> เงินโอน</span>
+                <% } else if (t.payment_method === 'qr') { %>
+                  <span class="text-light"><i class="fa-solid fa-qrcode text-warning me-1"></i> QR Code</span>
+                <% } else { %>
+                  <span class="text-muted">-</span>
+                <% } %>
+              </td>
+              <td class="text-center">
+                <% if (t.status === 'paid') { %>
+                  <span class="badge text-dark px-2 py-0.5 font-weight-bold" style="background-color: #00E676 !important; font-size: 0.78rem;">ชำระแล้ว</span>
+                <% } else if (t.status === 'pending') { %>
+                  <span class="badge px-2 py-0.5 fw-bold" style="background-color: #FFC400 !important; color: #000000 !important; font-size: 0.78rem;">ค้างชำระ</span>
+                <% } else if (t.status === 'installment') { %>
+                  <span class="badge px-2 py-0.5 fw-bold" style="background-color: #7C4DFF !important; color: #FFFFFF !important; font-size: 0.78rem;">ผ่อนชำระ</span>
+                  <% if (t.installment_terms) { %>
+                    <div class="text-info" style="font-size: 0.7rem; font-weight: 500; margin-top: 3px;"><i class="fa-solid fa-clock-rotate-left me-1"></i><%= t.installment_terms %></div>
+                  <% } %>
+                <% } else if (t.status === 'cancelled') { %>
+                  <span class="badge text-light px-2 py-0.5 font-weight-bold" style="background-color: #FF1744 !important; font-size: 0.78rem;">ยกเลิกแล้ว</span>
+                <% } %>
+              </td>
+              <td class="text-end fw-bold <%= t.type === 'income' ? (t.status === 'paid' ? 'text-success' : (t.status === 'installment' ? 'text-info' : 'text-warning')) : 'text-danger' %>">
+                <%= t.type === 'income' ? '+' : '-' %><%= parseFloat(t.amount).toLocaleString('th-TH', {minimumFractionDigits: 2}) %>
+              </td>
+              <td class="text-center">
+                <% if (t.repair_id) { %>
+                  <a href="/repairs/detail/<%= t.repair_id %>" class="btn btn-sm btn-outline-info" title="ดูใบสั่งซ่อม">
+                    <i class="fa-solid fa-file-invoice"></i> ใบซ่อม
+                  </a>
+                <% } else { %>
+                  <span class="text-muted small">-</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ==========================================
+     MODALS
+     ========================================== -->
+
+<!-- Record General Expense Modal -->
+<div class="modal fade" id="recordExpenseModal" tabindex="-1" aria-labelledby="recordExpenseModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-light" style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 16px; backdrop-filter: var(--glass-blur);">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title" id="recordExpenseModalLabel"><i class="fa-solid fa-minus-circle text-danger me-2"></i>บันทึกรายจ่ายทั่วไปของอู่</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="recordExpenseForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="expDescription" class="form-label">คำอธิบายรายการรายจ่าย <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-glass text-light" id="expDescription" required placeholder="เช่น ซื้อเครื่องมือไฮดรอลิก, ค่าน้ำค่าน้อยรอบเดือนนี้">
+          </div>
+          <div class="mb-3">
+            <label for="expAmount" class="form-label">จำนวนเงินจ่ายสุทธิ (บาท) <span class="text-danger">*</span></label>
+            <input type="number" class="form-control form-glass text-light" id="expAmount" required step="0.01" placeholder="ยอดเงินจ่ายจริง...">
+          </div>
+          <div class="mb-3">
+            <label for="expMethod" class="form-label">ช่องทางชำระรายจ่าย <span class="text-danger">*</span></label>
+            <select class="form-select form-glass text-light" id="expMethod" required>
+              <option value="cash" selected>เงินสดอู่</option>
+              <option value="transfer">บัญชีเงินโอนอู่</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="expDate" class="form-label">วันที่จ่ายธุรกรรม <span class="text-danger">*</span></label>
+            <% const todayStr = new Date().toISOString().split('T')[0]; %>
+            <input type="date" class="form-control form-glass text-light" id="expDate" value="<%= todayStr %>" required>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-secondary bg-opacity-25 border-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-glass-primary">บันทึกรายจ่าย</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Record Income Modal (Receive payment for repair job) -->
+<div class="modal fade" id="recordIncomeModal" tabindex="-1" aria-labelledby="recordIncomeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-light" style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 16px; backdrop-filter: var(--glass-blur);">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title" id="recordIncomeModalLabel"><i class="fa-solid fa-cash-register text-success me-2"></i>รับชำระเงินค่าซ่อมจากลูกค้า</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="recordIncomeForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="incRepairId" class="form-label">เลือกใบสั่งซ่อมที่ซ่อมเสร็จแล้ว (สถานะ: พร้อมส่งมอบ) <span class="text-danger">*</span></label>
+            <select class="form-select form-glass text-light" id="incRepairId" required>
+              <option value="" disabled selected>-- เลือกงานซ่อมที่รอเก็บเงิน --</option>
+              <% pendingPayments.forEach(p => { %>
+                <option value="<%= p.id %>" data-cost="<%= p.actual_cost %>">ใบซ่อม #<%= p.id %> [ทะเบียน: <%= p.license_plate %>] - เจ้าของ: <%= p.owner_name %> - ยอด: <%= parseFloat(p.actual_cost).toLocaleString() %> บ.</option>
+              <% }) %>
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label text-muted">ยอดเรียกเก็บเงินสุทธิ</label>
+            <div class="fw-bold h4 text-success" id="incAmountDisplay">0.00 บาท</div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="incMethod" class="form-label">ช่องทางรับชำระเงิน <span class="text-danger">*</span></label>
+            <select class="form-select form-glass text-light" id="incMethod" required>
+              <option value="cash" selected>เงินสด</option>
+              <option value="transfer">โอนผ่านธนาคาร</option>
+              <option value="qr">สแกน QR Code</option>
+            </select>
+          </div>
+
+          <!-- Bank Slip Upload Zone -->
+          <div id="slipUploadZone" class="mb-3 d-none">
+            <label class="form-label text-muted small"><i class="fa-solid fa-file-image text-info me-1"></i> อัปโหลดรูปภาพสลิปโอนเงิน (สแกนอัตโนมัติ)</label>
+            <div class="border border-dashed border-secondary border-opacity-50 rounded-3 p-3 text-center position-relative" id="slipDropArea" style="background: rgba(255, 255, 255, 0.02); cursor: pointer; transition: all 0.2s;">
+              <input type="file" id="slipInput" accept="image/*" class="position-absolute top-0 start-0 w-100 h-100 opacity-0" style="cursor: pointer; z-index: 10;">
+              <div id="slipPrompt">
+                <i class="fa-solid fa-cloud-arrow-up text-info fs-3 mb-2 animate-bounce"></i>
+                <div class="small text-light">ลากไฟล์สลิปมาวาง หรือ คลิกเพื่อเลือกรูปภาพ</div>
+                <div class="text-muted" style="font-size: 0.72rem; margin-top: 2px;">รองรับไฟล์รูปภาพสลิปโอนเงินของทุกธนาคาร</div>
+              </div>
+              <div id="slipLoading" class="d-none py-2">
+                <div class="spinner-border spinner-border-sm text-info mb-2" role="status"></div>
+                <div class="small text-info fw-bold animate-pulse">กำลังใช้ AI วิเคราะห์สแกนสลิปโอนเงิน...</div>
+              </div>
+              <div id="slipResult" class="d-none" style="position: relative; z-index: 20;">
+                <div class="d-flex align-items-center justify-content-center gap-2 text-success small fw-bold mb-1">
+                  <i class="fa-solid fa-circle-check fs-5"></i> สแกนสลิปสำเร็จ!
+                </div>
+                <div class="small text-light" id="slipParsedInfo">ยอดเงินโอน: - บาท</div>
+                <div class="text-muted" style="font-size: 0.72rem; margin-top: 1px;" id="slipConfidence">ความแม่นยำ: -%</div>
+                <button type="button" class="btn btn-sm btn-outline-danger mt-2 py-0.5 px-2" id="clearSlipBtn" style="font-size: 0.72rem;">ลบรูปภาพสลิป</button>
+              </div>
+            </div>
+            <!-- Preview slip image -->
+            <div id="slipPreviewContainer" class="d-none mt-2 text-center">
+              <img id="slipPreviewImg" src="" alt="สลิปโอนเงิน" class="img-thumbnail rounded-3" style="max-height: 150px; background: rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.15);">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="incStatus" class="form-label">สถานะการรับเงิน <span class="text-danger">*</span></label>
+            <select class="form-select form-glass text-light" id="incStatus" required>
+              <option value="paid" selected>ชำระครบถ้วน (Paid)</option>
+              <option value="installment">ผ่อนชำระ / จ่ายบางส่วน (Installment)</option>
+              <option value="pending">ค้างชำระทั้งหมด (Pending)</option>
+            </select>
+          </div>
+
+          <!-- Installment Terms Input Group -->
+          <div class="mb-3 d-none" id="installmentTermsGroup">
+            <label for="incInstallmentTerms" class="form-label">ระยะเวลาผ่อนชำระ <span class="text-danger">*</span></label>
+            <select class="form-select form-glass text-light" id="incInstallmentTerms">
+              <option value="3 เดือน (3 งวด)" selected>3 เดือน (3 งวด)</option>
+              <option value="6 เดือน (6 งวด)">6 เดือน (6 งวด)</option>
+              <option value="12 เดือน (12 งวด)">12 เดือน (12 งวด)</option>
+              <option value="24 เดือน (24 งวด)">24 เดือน (24 งวด)</option>
+              <option value="อื่นๆ (ระบุเอง)">อื่นๆ (ระบุเอง)...</option>
+            </select>
+            <input type="text" class="form-control form-glass text-light mt-2 d-none" id="incInstallmentTermsCustom" placeholder="ระบุระยะเวลา เช่น 5 เดือน หรือ 8 งวด...">
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-secondary bg-opacity-25 border-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-glass-success">ยืนยันรับเงิน & ปิดส่งมอบ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Load Tesseract.js OCR Engine -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<!-- AJAX JS Scripts -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    
+    // Auto submit custom date range form when values change
+    const dateRangeInputs = document.querySelectorAll('#dateRangeForm input[type="date"]');
+    dateRangeInputs.forEach(input => {
+      input.addEventListener('change', function() {
+        document.getElementById('dateRangeForm').submit();
+      });
+    });
+
+    // 1. Expense Form Submit
+    const expForm = document.getElementById('recordExpenseForm');
+    expForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const payload = {
+        description:      document.getElementById('expDescription').value,
+        amount:           document.getElementById('expAmount').value,
+        payment_method:   document.getElementById('expMethod').value,
+        transaction_date: document.getElementById('expDate').value
+      };
+      
+      fetch('/finances/record-expense', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          window.location.reload();
+        } else {
+          alert('ผิดพลาด: ' + data.message);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+      });
+    });
+
+    // 2. Select Repair change listener for price display
+    const incRepairSelect = document.getElementById('incRepairId');
+    const incAmountDisplay = document.getElementById('incAmountDisplay');
+    
+    incRepairSelect.addEventListener('change', function() {
+      const selectedOption = this.options[this.selectedIndex];
+      const cost = parseFloat(selectedOption.dataset.cost) || 0;
+      incAmountDisplay.innerText = cost.toLocaleString('th-TH', {minimumFractionDigits: 2}) + ' บาท';
+      
+      // Re-trigger OCR evaluation if a slip image is already loaded
+      const slipPreviewImg = document.getElementById('slipPreviewImg');
+      if (slipPreviewImg && slipPreviewImg.src && !slipPreviewImg.src.endsWith('/')) {
+        runSlipOCR(slipPreviewImg.src);
+      }
+    });
+
+    // ==========================================
+    // Bank Slip OCR Reader Feature
+    // ==========================================
+    const incMethod = document.getElementById('incMethod');
+    const slipUploadZone = document.getElementById('slipUploadZone');
+    const slipInput = document.getElementById('slipInput');
+    const slipPrompt = document.getElementById('slipPrompt');
+    const slipLoading = document.getElementById('slipLoading');
+    const slipResult = document.getElementById('slipResult');
+    const slipParsedInfo = document.getElementById('slipParsedInfo');
+    const slipConfidence = document.getElementById('slipConfidence');
+    const slipPreviewContainer = document.getElementById('slipPreviewContainer');
+    const slipPreviewImg = document.getElementById('slipPreviewImg');
+    const clearSlipBtn = document.getElementById('clearSlipBtn');
+
+    if (incMethod && slipUploadZone) {
+      incMethod.addEventListener('change', function() {
+        if (this.value === 'transfer' || this.value === 'qr') {
+          slipUploadZone.classList.remove('d-none');
+        } else {
+          slipUploadZone.classList.add('d-none');
+          resetSlipInput();
+        }
+      });
+    }
+
+    if (slipInput) {
+      slipInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          if (slipPreviewImg) slipPreviewImg.src = e.target.result;
+          if (slipPreviewContainer) slipPreviewContainer.classList.remove('d-none');
+          runSlipOCR(e.target.result);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    if (clearSlipBtn) {
+      clearSlipBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        resetSlipInput();
+      });
+    }
+
+    function resetSlipInput() {
+      if (slipInput) slipInput.value = '';
+      if (slipPreviewImg) slipPreviewImg.src = '';
+      if (slipPreviewContainer) slipPreviewContainer.classList.add('d-none');
+      if (slipPrompt) slipPrompt.classList.remove('d-none');
+      if (slipResult) slipResult.classList.add('d-none');
+      if (slipLoading) slipLoading.classList.add('d-none');
+    }
+
+    function runSlipOCR(imageSrc) {
+      if (slipPrompt) slipPrompt.classList.add('d-none');
+      if (slipLoading) slipLoading.classList.remove('d-none');
+      if (slipResult) slipResult.classList.add('d-none');
+
+      Tesseract.recognize(
+        imageSrc,
+        'eng',
+        { logger: m => console.log(m) }
+      ).then(({ data: { text, confidence } }) => {
+        console.log("OCR Result Text:", text);
+        
+        // Find decimal values in slip
+        const matches = text.match(/\b\d{1,3}(?:,\d{3})*\.\d{2}\b/g) || [];
+        let detectedAmount = null;
+
+        const selectedOption = incRepairSelect.options[incRepairSelect.selectedIndex];
+        const expectedCost = selectedOption ? parseFloat(selectedOption.dataset.cost) : 0;
+
+        if (matches.length > 0) {
+          const amounts = matches.map(m => parseFloat(m.replace(/,/g, '')));
+          
+          // Try to match the expected cost of the invoice
+          if (expectedCost > 0) {
+            detectedAmount = amounts.find(a => Math.abs(a - expectedCost) < 0.01);
+          }
+          
+          // Fallback to highest amount found
+          if (!detectedAmount) {
+            detectedAmount = Math.max(...amounts);
+          }
+        }
+
+        if (slipLoading) slipLoading.classList.add('d-none');
+        if (slipResult) slipResult.classList.remove('d-none');
+
+        if (detectedAmount) {
+          if (slipParsedInfo) {
+            slipParsedInfo.innerHTML = `ตรวจพบยอดโอนเงิน: <strong class="text-success" style="font-size: 1.15rem;">${detectedAmount.toLocaleString('th-TH', {minimumFractionDigits: 2})} บาท</strong>`;
+            if (expectedCost > 0 && Math.abs(detectedAmount - expectedCost) < 0.01) {
+              slipParsedInfo.innerHTML += ` <span class="badge bg-success ms-1" style="font-size: 0.65rem;">✓ ยอดเงินตรงกัน!</span>`;
+            } else if (expectedCost > 0) {
+              slipParsedInfo.innerHTML += ` <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">⚠ ยอดไม่ตรง (ยอดจริง: ${expectedCost.toLocaleString()} บ.)</span>`;
+            }
+          }
+          if (slipConfidence) {
+            slipConfidence.innerText = `ความมั่นใจระดับ AI: ${Math.round(confidence)}%`;
+          }
+        } else {
+          if (slipParsedInfo) {
+            slipParsedInfo.innerHTML = `<span class="text-warning">สแกนสำเร็จแต่ไม่พบจำนวนเงินในสลิป โปรดตรวจสอบด้วยตนเอง</span>`;
+          }
+          if (slipConfidence) {
+            slipConfidence.innerText = `ระดับความมั่นใจของภาพสลิป: ${Math.round(confidence)}%`;
+          }
+        }
+      }).catch(err => {
+        console.error("Tesseract OCR Exception:", err);
+        if (slipLoading) slipLoading.classList.add('d-none');
+        if (slipPrompt) slipPrompt.classList.remove('d-none');
+      });
+    }
+
+    // Toggle installment terms visibility based on select option
+    const incStatusSelect = document.getElementById('incStatus');
+    const installmentTermsGroup = document.getElementById('installmentTermsGroup');
+    if (incStatusSelect && installmentTermsGroup) {
+      incStatusSelect.addEventListener('change', function() {
+        if (this.value === 'installment') {
+          installmentTermsGroup.classList.remove('d-none');
+        } else {
+          installmentTermsGroup.classList.add('d-none');
+        }
+      });
+    }
+
+    // Toggle custom terms input field
+    const incInstallmentTerms = document.getElementById('incInstallmentTerms');
+    const incInstallmentTermsCustom = document.getElementById('incInstallmentTermsCustom');
+    if (incInstallmentTerms && incInstallmentTermsCustom) {
+      incInstallmentTerms.addEventListener('change', function() {
+        if (this.value === 'อื่นๆ (ระบุเอง)') {
+          incInstallmentTermsCustom.classList.remove('d-none');
+          incInstallmentTermsCustom.focus();
+        } else {
+          incInstallmentTermsCustom.classList.add('d-none');
+          incInstallmentTermsCustom.value = '';
+        }
+      });
+    }
+
+    // 3. Income Form Submit
+    const incForm = document.getElementById('recordIncomeForm');
+    incForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      let termsVal = null;
+      const statusVal = document.getElementById('incStatus').value;
+      if (statusVal === 'installment') {
+        const selectTerms = document.getElementById('incInstallmentTerms').value;
+        termsVal = selectTerms === 'อื่นๆ (ระบุเอง)' ? document.getElementById('incInstallmentTermsCustom').value : selectTerms;
+      }
+      
+      const payload = {
+        repair_id:          document.getElementById('incRepairId').value,
+        payment_method:     document.getElementById('incMethod').value,
+        status:             statusVal,
+        installment_terms:  termsVal
+      };
+      
+      fetch('/finances/record-income', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          window.location.reload();
+        } else {
+          alert('ผิดพลาด: ' + data.message);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert('เกิดข้อผิดพลาดในการบันทึกชำระเงิน');
+      });
+    });
+
+    // ==========================================
+    // Render Financial Analytics Charts
+    // ==========================================
+    let trendChartInstance = null;
+    let methodChartInstance = null;
+
+    function renderFinancesCharts() {
+      const dataStore = document.getElementById('chartDataStore');
+      if (!dataStore) return;
+
+      const labels = JSON.parse(dataStore.getAttribute('data-labels'));
+      const incomeData = JSON.parse(dataStore.getAttribute('data-income'));
+      const expenseData = JSON.parse(dataStore.getAttribute('data-expense'));
+      const methodData = JSON.parse(dataStore.getAttribute('data-methods'));
+
+      // Destroy old chart instances to prevent canvas reuse errors
+      if (trendChartInstance) trendChartInstance.destroy();
+      if (methodChartInstance) methodChartInstance.destroy();
+
+      const trendCtx = document.getElementById('financeTrendChart').getContext('2d');
+      trendChartInstance = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'รายรับสะสม (Income)',
+              data: incomeData,
+              borderColor: '#00E676', // Neon green
+              backgroundColor: 'rgba(0, 230, 118, 0.1)',
+              borderWidth: 3,
+              tension: 0.3,
+              fill: true,
+              pointBackgroundColor: '#00E676',
+              pointHoverRadius: 6
+            },
+            {
+              label: 'รายจ่ายสะสม (Expense)',
+              data: expenseData,
+              borderColor: '#FF1744', // Racing red
+              backgroundColor: 'rgba(255, 23, 68, 0.1)',
+              borderWidth: 3,
+              tension: 0.3,
+              fill: true,
+              pointBackgroundColor: '#FF1744',
+              pointHoverRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94A3B8' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#94A3B8' }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: { color: '#F1F2F6', font: { family: 'Prompt' } }
+            }
+          }
+        }
+      });
+
+      const methodCtx = document.getElementById('paymentMethodChart').getContext('2d');
+      methodChartInstance = new Chart(methodCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['เงินสด', 'โอนผ่านธนาคาร', 'QR Code'],
+          datasets: [{
+            data: methodData,
+            backgroundColor: ['#00E676', '#00E5FF', '#FFC400'],
+            borderColor: '#14161C',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#F1F2F6', boxWidth: 12, font: { family: 'Prompt' } }
+            }
+          }
+        }
+      });
+    }
+
+    // ==========================================
+    // AJAX Live Filtering & Charts Reloading
+    // ==========================================
+    function fetchFinancesData(url) {
+      const container = document.getElementById('financesContainer');
+      if (container) container.style.opacity = '0.65';
+
+      fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+
+          // Swap Finances Container
+          const newContainer = doc.getElementById('financesContainer');
+          if (newContainer && container) {
+            container.innerHTML = newContainer.innerHTML;
+            container.style.opacity = '1';
+          }
+
+          // Re-render the charts and re-attach all listeners
+          renderFinancesCharts();
+          registerFinanceListeners();
+
+          // Update URL in address bar
+          window.history.pushState({ path: url }, '', url);
+        })
+        .catch(err => {
+          console.error('Fetch Finances Error:', err);
+          if (container) container.style.opacity = '1';
+        });
+    }
+
+    function registerFinanceListeners() {
+      const filterForm = document.getElementById('financeFilterForm');
+      if (!filterForm) return;
+
+      // Intercept submit
+      filterForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const searchInput = this.querySelector('input[name="search"]');
+        const selectFilter = this.querySelector('select[name="filter_option"]');
+        const periodVal = this.querySelector('input[name="period"]').value;
+
+        const searchVal = encodeURIComponent(searchInput ? searchInput.value : '');
+        const filterVal = encodeURIComponent(selectFilter ? selectFilter.value : '');
+
+        const url = `/finances?search=${searchVal}&filter_option=${filterVal}&period=${periodVal}`;
+        fetchFinancesData(url);
+      });
+
+      // Intercept select change (auto submit for fluid UX!)
+      const selectFilter = filterForm.querySelector('select[name="filter_option"]');
+      if (selectFilter) {
+        selectFilter.addEventListener('change', function() {
+          const searchInput = filterForm.querySelector('input[name="search"]');
+          const periodVal = filterForm.querySelector('input[name="period"]').value;
+          const searchVal = encodeURIComponent(searchInput ? searchInput.value : '');
+          const filterVal = encodeURIComponent(this.value);
+
+          const url = `/finances?search=${searchVal}&filter_option=${filterVal}&period=${periodVal}`;
+          fetchFinancesData(url);
+        });
+      }
+
+      // Foolproof search button click
+      const searchBtn = filterForm.querySelector('button[type="submit"]');
+      if (searchBtn) {
+        searchBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          const searchInput = filterForm.querySelector('input[name="search"]');
+          const selectFilter = filterForm.querySelector('select[name="filter_option"]');
+          const periodVal = filterForm.querySelector('input[name="period"]').value;
+
+          const searchVal = encodeURIComponent(searchInput ? searchInput.value : '');
+          const filterVal = encodeURIComponent(selectFilter ? selectFilter.value : '');
+
+          const url = `/finances?search=${searchVal}&filter_option=${filterVal}&period=${periodVal}`;
+          fetchFinancesData(url);
+        });
+      }
+
+      // Intercept Enter keypress in search input
+      const searchInput = filterForm.querySelector('input[name="search"]');
+      if (searchInput) {
+        searchInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const selectFilter = filterForm.querySelector('select[name="filter_option"]');
+            const periodVal = filterForm.querySelector('input[name="period"]').value;
+
+            const searchVal = encodeURIComponent(this.value);
+            const filterVal = encodeURIComponent(selectFilter ? selectFilter.value : '');
+
+            const url = `/finances?search=${searchVal}&filter_option=${filterVal}&period=${periodVal}`;
+            fetchFinancesData(url);
+          }
+        });
+      }
+
+      // Intercept Quick Ranges clicks via event delegation inside `#financeAnalyticsCollapse`
+      const collapsePanel = document.getElementById('financeAnalyticsCollapse');
+      if (collapsePanel) {
+        // Clone and swap buttons or use a delegation listener
+        const btnLinks = collapsePanel.querySelectorAll('.btn-group a');
+        btnLinks.forEach(link => {
+          link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = this.getAttribute('href');
+            if (url && url !== '#') {
+              fetchFinancesData(url);
+            }
+          });
+        });
+      }
+    }
+
+    // Initial render and registration
+    renderFinancesCharts();
+    registerFinanceListeners();
+
+  });
+</script>
+
+</div>
+
+<!-- ChartJS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<%- include('../partials/footer') %>
