@@ -1,28 +1,65 @@
 <%- include('../partials/header') %>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2 class="page-title">จัดการข้อมูลช่างซ่อม</h2>
-  <button class="btn btn-glass-success" data-bs-toggle="modal" data-bs-target="#addMechanicModal">
-    <i class="fa-solid fa-plus me-1"></i> เพิ่มช่างซ่อมใหม่
-  </button>
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+  <div>
+    <h2 class="page-title mb-1"><i class="fa-solid fa-user-gear me-2 text-info"></i>ข้อมูลช่างซ่อม & สรุปวันทำงานและค่าจ้าง</h2>
+    <div class="text-muted small">จัดการรายชื่อช่าง กำหนดอัตราค่าจ้างรายวัน/รายเดือน คำนวณเงินจากระบบเช็คชื่อ และบันทึกจ่ายเงินเดือน</div>
+  </div>
+  <div>
+    <button class="btn btn-glass-success" data-bs-toggle="modal" data-bs-target="#addMechanicModal">
+      <i class="fa-solid fa-user-plus me-1"></i> เพิ่มช่างซ่อมใหม่
+    </button>
+  </div>
+</div>
+
+<!-- Month Selector & Summary Metrics -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4 col-sm-12">
+    <div class="glass-card p-3 h-100 d-flex flex-column justify-content-center">
+      <form action="/mechanics" method="GET" class="d-flex align-items-center gap-2">
+        <label for="monthPicker" class="text-light small text-nowrap"><i class="fa-solid fa-calendar-days text-primary me-1"></i>เลือกเดือน:</label>
+        <input type="month" id="monthPicker" name="month" class="form-control form-glass text-light form-control-sm font-monospace" value="<%= selectedMonth %>" onchange="this.form.submit()">
+      </form>
+    </div>
+  </div>
+
+  <div class="col-md-4 col-6">
+    <div class="glass-card p-3 h-100 text-center border-bottom border-info border-3">
+      <div class="text-muted small mb-1">ช่างซ่อมในระบบ</div>
+      <div class="h3 mb-0 fw-bold text-light font-monospace"><%= mechanics.length %></div>
+      <div class="text-xs text-muted mt-1">คนพร้อมปฏิบัติงาน</div>
+    </div>
+  </div>
+
+  <div class="col-md-4 col-6">
+    <% 
+      const totalEstimatedPayroll = mechanics.reduce((sum, m) => sum + (m.estimatedWage || 0), 0);
+    %>
+    <div class="glass-card p-3 h-100 text-center border-bottom border-success border-3">
+      <div class="text-muted small mb-1">ยอดรวมค่าจ้างงวดนี้ (ประมาณการ)</div>
+      <div class="h3 mb-0 fw-bold text-success font-monospace">฿<%= totalEstimatedPayroll.toLocaleString() %></div>
+      <div class="text-xs text-muted mt-1">คำนวณจากวันมาทำงานจริง</div>
+    </div>
+  </div>
 </div>
 
 <!-- Filter Bar -->
 <div class="glass-card mb-4 py-3">
   <form action="/mechanics" method="GET" id="mechanicFilterForm" class="row g-3">
-    <div class="col-md-5 col-sm-6">
-      <input type="text" class="form-control form-glass" name="search" value="<%= search %>" placeholder="ค้นหาชื่อช่างซ่อม, เบอร์โทร..." style="border-radius: 8px;">
+    <input type="hidden" name="month" value="<%= selectedMonth %>">
+    <div class="col-md-6 col-sm-6">
+      <input type="text" class="form-control form-glass text-light" name="search" value="<%= search %>" placeholder="ค้นหาชื่อช่างซ่อม, เบอร์โทร..." style="border-radius: 8px;">
     </div>
     <div class="col-md-4 col-sm-6">
       <select class="form-select form-glass text-light" name="status">
         <option value="">-- กรองสถานะทั้งหมด --</option>
-        <option value="active" <%= status === 'active' ? 'selected' : '' %>>ปฏิบัติงานปกติ</option>
-        <option value="inactive" <%= status === 'inactive' ? 'selected' : '' %>>ระงับการปฏิบัติงาน</option>
+        <option value="active" <%= status === 'active' ? 'selected' : '' %>>ปฏิบัติงานปกติ (Active)</option>
+        <option value="inactive" <%= status === 'inactive' ? 'selected' : '' %>>ระงับการทำงาน (Inactive)</option>
       </select>
     </div>
-    <div class="col-md-3 col-sm-12 d-grid">
+    <div class="col-md-2 col-sm-12 d-grid">
       <button type="submit" class="btn btn-glass-primary">
-        <i class="fa-solid fa-magnifying-glass me-1"></i> ค้นหาข้อมูล
+        <i class="fa-solid fa-magnifying-glass me-1"></i> ค้นหา
       </button>
     </div>
   </form>
@@ -34,13 +71,13 @@
     <table class="table-excel text-light">
       <thead>
         <tr>
-          <th class="text-center" style="width: 4%;">ลำดับ</th>
-          <th style="width: 16%;">ชื่อผู้ใช้งาน</th>
-          <th style="width: 18%;">ชื่อ-นามสกุล</th>
-          <th class="text-center" style="width: 12%;">เบอร์โทรศัพท์</th>
-          <th style="width: 22%;">ทักษะความชำนาญ</th>
-          <th class="text-center" style="width: 16%;">สถานะ</th>
-          <th class="text-center" style="width: 12%;">การจัดการ</th>
+          <th class="text-center" style="width: 4%;">#</th>
+          <th style="width: 20%;">ชื่อช่างซ่อม / ข้อมูล</th>
+          <th class="text-center" style="width: 15%;">รูปแบบค่าจ้าง</th>
+          <th class="text-center" style="width: 20%;">สถิติวันทำงาน (<%= selectedMonth %>)</th>
+          <th class="text-center" style="width: 15%;">ค่าจ้างสะสมงวดนี้</th>
+          <th class="text-center" style="width: 12%;">สถานะ</th>
+          <th class="text-center" style="width: 14%;">การจัดการ</th>
         </tr>
       </thead>
       <tbody id="mechanicsTbody">
@@ -52,16 +89,64 @@
           <% mechanics.forEach((mechanic, index) => { %>
             <tr>
               <td class="text-center"><%= index + 1 %></td>
-              <td class="fw-bold text-info font-monospace"><%= mechanic.username %></td>
-              <td><div class="fw-bold text-light"><%= mechanic.fullname %></div></td>
-              <td class="text-center font-monospace"><%= mechanic.phone || '-' %></td>
-              <td class="<%= !mechanic.skills ? 'text-center' : '' %>">
+              <td>
+                <div class="fw-bold text-light"><%= mechanic.fullname %></div>
+                <div class="text-muted small font-monospace"><%= mechanic.phone || '-' %> • @<%= mechanic.username %></div>
                 <% if (mechanic.skills) { %>
-                  <div class="text-light small" title="<%= mechanic.skills %>" style="width: 100%; overflow: hidden; white-space: nowrap;"><%= mechanic.skills %></div>
-                <% } else { %>
-                  <span class="text-muted font-monospace">-</span>
+                  <div class="badge bg-secondary bg-opacity-25 text-info border border-info border-opacity-25 small mt-1"><%= mechanic.skills %></div>
                 <% } %>
               </td>
+              
+              <!-- Salary Config -->
+              <td class="text-center">
+                <% if (mechanic.salary_type === 'daily') { %>
+                  <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-50">
+                    💰 รายวัน: ฿<%= (parseFloat(mechanic.salary_rate || 500)).toLocaleString() %>/วัน
+                  </span>
+                <% } else { %>
+                  <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-50">
+                    💼 รายเดือน: ฿<%= (parseFloat(mechanic.salary_rate || 15000)).toLocaleString() %>/ด.
+                  </span>
+                <% } %>
+                <div class="text-xs text-muted mt-1">OT: ฿<%= mechanic.overtime_rate || 60 %>/ชม.</div>
+              </td>
+
+              <!-- Attendance Stats in Month -->
+              <td class="text-center">
+                <div class="d-flex justify-content-center gap-1 flex-wrap">
+                  <span class="badge bg-success bg-opacity-25 text-success border border-success" title="มาตรงเวลา">
+                    มา <%= mechanic.present_days || 0 %> วัน
+                  </span>
+                  <% if (mechanic.late_days > 0) { %>
+                    <span class="badge bg-warning bg-opacity-25 text-warning border border-warning" title="มาสาย">
+                      สาย <%= mechanic.late_days %> วัน
+                    </span>
+                  <% } %>
+                  <% if (mechanic.leave_days > 0) { %>
+                    <span class="badge bg-info bg-opacity-25 text-info border border-info" title="ลางาน">
+                      ลา <%= mechanic.leave_days %> วัน
+                    </span>
+                  <% } %>
+                  <% if (mechanic.absent_days > 0) { %>
+                    <span class="badge bg-danger bg-opacity-25 text-danger border border-danger" title="ขาดงาน">
+                      ขาด <%= mechanic.absent_days %> วัน
+                    </span>
+                  <% } %>
+                </div>
+                <div class="text-xs text-muted mt-1">
+                  รวมทำงานจริง: <strong><%= mechanic.work_days || 0 %></strong> วัน
+                </div>
+              </td>
+
+              <!-- Calculated Wage -->
+              <td class="text-center">
+                <div class="h5 mb-0 fw-bold text-success font-monospace">
+                  ฿<%= (mechanic.estimatedWage || 0).toLocaleString() %>
+                </div>
+                <div class="text-xs text-muted">คำนวณสุทธิ</div>
+              </td>
+
+              <!-- Status -->
               <td class="text-center">
                 <% if (mechanic.status === 'active') { %>
                   <span class="badge text-dark font-weight-bold" style="background-color: #00E676 !important;">พร้อมปฏิบัติงาน</span>
@@ -69,22 +154,40 @@
                   <span class="badge text-light font-weight-bold" style="background-color: #FF1744 !important;">ระงับการทำงาน</span>
                 <% } %>
               </td>
+
+              <!-- Actions -->
               <td class="text-center">
-                <button class="btn btn-sm btn-outline-info me-1 edit-mechanic-btn" 
-                        data-id="<%= mechanic.id %>"
-                        data-fullname="<%= mechanic.fullname %>"
-                        data-phone="<%= mechanic.phone %>"
-                        data-skills="<%= mechanic.skills %>"
-                        data-status="<%= mechanic.status %>"
-                        title="แก้ไข">
-                  <i class="fa-solid fa-pen-to-square"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-danger delete-mechanic-btn" 
-                        data-id="<%= mechanic.id %>"
-                        data-fullname="<%= mechanic.fullname %>"
-                        title="ลบ">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
+                <div class="d-flex justify-content-center gap-1">
+                  <!-- Pay Salary Button -->
+                  <button class="btn btn-sm btn-outline-success pay-salary-btn" 
+                          data-id="<%= mechanic.id %>"
+                          data-fullname="<%= mechanic.fullname %>"
+                          data-amount="<%= mechanic.estimatedWage || 0 %>"
+                          data-month="<%= selectedMonth %>"
+                          title="บันทึกจ่ายเงินค่าจ้าง">
+                    <i class="fa-solid fa-money-bill-wave"></i> จ่ายเงิน
+                  </button>
+                  <!-- Edit Button -->
+                  <button class="btn btn-sm btn-outline-info edit-mechanic-btn" 
+                          data-id="<%= mechanic.id %>"
+                          data-fullname="<%= mechanic.fullname %>"
+                          data-phone="<%= mechanic.phone %>"
+                          data-skills="<%= mechanic.skills %>"
+                          data-status="<%= mechanic.status %>"
+                          data-salary-type="<%= mechanic.salary_type || 'daily' %>"
+                          data-salary-rate="<%= mechanic.salary_rate || 500 %>"
+                          data-overtime-rate="<%= mechanic.overtime_rate || 60 %>"
+                          title="แก้ไขข้อมูลและค่าจ้าง">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                  </button>
+                  <!-- Delete Button -->
+                  <button class="btn btn-sm btn-outline-danger delete-mechanic-btn" 
+                          data-id="<%= mechanic.id %>"
+                          data-fullname="<%= mechanic.fullname %>"
+                          title="ระงับการใช้งาน">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
               </td>
             </tr>
           <% }) %>
@@ -98,313 +201,335 @@
      MODALS
      ========================================== -->
 
-<!-- Add Mechanic Modal -->
-<div class="modal fade" id="addMechanicModal" tabindex="-1" aria-labelledby="addMechanicModalLabel" aria-hidden="true">
+<!-- 1. Add Mechanic Modal -->
+<div class="modal fade" id="addMechanicModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content text-light" style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 16px; backdrop-filter: var(--glass-blur);">
+    <div class="modal-content text-light glass-card" style="background: rgba(20, 25, 40, 0.95); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 16px;">
       <div class="modal-header border-secondary border-opacity-25">
-        <h5 class="modal-title" id="addMechanicModalLabel"><i class="fa-solid fa-user-plus text-success me-2"></i>ลงทะเบียนช่างซ่อมใหม่</h5>
+        <h5 class="modal-title"><i class="fa-solid fa-user-plus text-success me-2"></i>ลงทะเบียนช่างซ่อมใหม่</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="addMechanicForm">
-        <div class="modal-body">
+        <div class="modal-body g-3">
           <div class="mb-3">
-            <label for="addUsername" class="form-label">ชื่อผู้ใช้งานสำหรับ Login <span class="text-danger">*</span></label>
-            <input type="text" class="form-control form-glass text-light" id="addUsername" required placeholder="ภาษาอังกฤษเท่านั้น เช่น somsak_c">
+            <label for="addUsername" class="form-label small fw-bold">ชื่อผู้ใช้งานสำหรับ Login <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-glass text-light" id="addUsername" required placeholder="ภาษาอังกฤษ เช่น somsak_c">
           </div>
           <div class="mb-3">
-            <label for="addPassword" class="form-label">รหัสผ่าน <span class="text-danger">*</span></label>
+            <label for="addPassword" class="form-label small fw-bold">รหัสผ่าน <span class="text-danger">*</span></label>
             <input type="password" class="form-control form-glass text-light" id="addPassword" required placeholder="กำหนดรหัสผ่าน...">
           </div>
           <div class="mb-3">
-            <label for="addFullname" class="form-label">ชื่อ-นามสกุล <span class="text-danger">*</span></label>
+            <label for="addFullname" class="form-label small fw-bold">ชื่อ-นามสกุล <span class="text-danger">*</span></label>
             <input type="text" class="form-control form-glass text-light" id="addFullname" required placeholder="เช่น นายสมศักดิ์ ช่างเหล็ก">
           </div>
           <div class="mb-3">
-            <label for="addPhone" class="form-label">เบอร์โทรศัพท์</label>
+            <label for="addPhone" class="form-label small fw-bold">เบอร์โทรศัพท์</label>
             <input type="tel" class="form-control form-glass text-light" id="addPhone" placeholder="เช่น 0898765432">
           </div>
           <div class="mb-3">
-            <label for="addSkills" class="form-label">ทักษะความชำนาญ</label>
-            <textarea class="form-control form-glass text-light" id="addSkills" rows="2" placeholder="เช่น ระบบไฟฟ้ารถยนต์, จูนกล่องเครื่องยนต์..."></textarea>
+            <label for="addSkills" class="form-label small fw-bold">ทักษะความชำนาญ</label>
+            <textarea class="form-control form-glass text-light" id="addSkills" rows="2" placeholder="เช่น ช่วงล่าง, ระบบเบรก, จูนเครื่องยนต์..."></textarea>
+          </div>
+
+          <!-- Salary Config Settings -->
+          <div class="p-3 rounded mb-3 border border-primary border-opacity-25" style="background: rgba(13, 110, 253, 0.05);">
+            <div class="fw-bold text-primary small mb-2"><i class="fa-solid fa-coins me-1"></i>ตั้งค่าอัตราค่าจ้าง & การจ่ายเงิน</div>
+            <div class="row g-2">
+              <div class="col-6">
+                <label for="addSalaryType" class="form-label small">ประเภทค่าจ้าง</label>
+                <select class="form-select form-glass text-light" id="addSalaryType">
+                  <option value="daily" selected>💰 รายวัน (Daily)</option>
+                  <option value="monthly">💼 รายเดือน (Monthly)</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label for="addSalaryRate" class="form-label small">อัตราค่าจ้าง (บาท)</label>
+                <input type="number" step="0.01" class="form-control form-glass text-light" id="addSalaryRate" value="500.00" required>
+              </div>
+              <div class="col-12 mt-2">
+                <label for="addOvertimeRate" class="form-label small">ค่าล่วงเวลา OT (บาท/ชั่วโมง)</label>
+                <input type="number" step="0.01" class="form-control form-glass text-light" id="addOvertimeRate" value="60.00">
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer border-secondary border-opacity-25">
-          <button type="button" class="btn btn-secondary bg-opacity-25 border-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-          <button type="submit" class="btn btn-glass-success">บันทึกข้อมูล</button>
+          <button type="button" class="btn btn-glass-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-glass-success"><i class="fa-solid fa-floppy-disk me-1"></i> บันทึกข้อมูล</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- Edit Mechanic Modal -->
-<div class="modal fade" id="editMechanicModal" tabindex="-1" aria-labelledby="editMechanicModalLabel" aria-hidden="true">
+<!-- 2. Edit Mechanic Modal -->
+<div class="modal fade" id="editMechanicModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content text-light" style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 16px; backdrop-filter: var(--glass-blur);">
+    <div class="modal-content text-light glass-card" style="background: rgba(20, 25, 40, 0.95); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 16px;">
       <div class="modal-header border-secondary border-opacity-25">
-        <h5 class="modal-title" id="editMechanicModalLabel"><i class="fa-solid fa-user-pen text-info me-2"></i>แก้ไขข้อมูลช่างซ่อม</h5>
+        <h5 class="modal-title"><i class="fa-solid fa-user-pen text-info me-2"></i>แก้ไขข้อมูลช่าง & อัตราค่าจ้าง</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="editMechanicForm">
         <input type="hidden" id="editMechanicId">
-        <div class="modal-body">
+        <div class="modal-body g-3">
           <div class="mb-3">
-            <label for="editFullname" class="form-label">ชื่อ-นามสกุล <span class="text-danger">*</span></label>
+            <label for="editFullname" class="form-label small fw-bold">ชื่อ-นามสกุล <span class="text-danger">*</span></label>
             <input type="text" class="form-control form-glass text-light" id="editFullname" required>
           </div>
           <div class="mb-3">
-            <label for="editPhone" class="form-label">เบอร์โทรศัพท์</label>
+            <label for="editPhone" class="form-label small fw-bold">เบอร์โทรศัพท์</label>
             <input type="tel" class="form-control form-glass text-light" id="editPhone">
           </div>
           <div class="mb-3">
-            <label for="editSkills" class="form-label">ทักษะความชำนาญ</label>
+            <label for="editSkills" class="form-label small fw-bold">ทักษะความชำนาญ</label>
             <textarea class="form-control form-glass text-light" id="editSkills" rows="2"></textarea>
           </div>
           <div class="mb-3">
-            <label for="editStatus" class="form-label">สถานะช่าง <span class="text-danger">*</span></label>
+            <label for="editStatus" class="form-label small fw-bold">สถานะช่าง <span class="text-danger">*</span></label>
             <select class="form-select form-glass text-light" id="editStatus" required>
               <option value="active">พร้อมปฏิบัติงาน (Active)</option>
               <option value="inactive">ระงับการทำงานชั่วคราว (Inactive)</option>
             </select>
           </div>
+
+          <!-- Salary Config Settings -->
+          <div class="p-3 rounded mb-3 border border-info border-opacity-25" style="background: rgba(0, 210, 255, 0.05);">
+            <div class="fw-bold text-info small mb-2"><i class="fa-solid fa-coins me-1"></i>ปรับปรุงอัตราค่าจ้าง & การจ่ายเงิน</div>
+            <div class="row g-2">
+              <div class="col-6">
+                <label for="editSalaryType" class="form-label small">ประเภทค่าจ้าง</label>
+                <select class="form-select form-glass text-light" id="editSalaryType">
+                  <option value="daily">💰 รายวัน (Daily)</option>
+                  <option value="monthly">💼 รายเดือน (Monthly)</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label for="editSalaryRate" class="form-label small">อัตราค่าจ้าง (บาท)</label>
+                <input type="number" step="0.01" class="form-control form-glass text-light" id="editSalaryRate" required>
+              </div>
+              <div class="col-12 mt-2">
+                <label for="editOvertimeRate" class="form-label small">ค่าล่วงเวลา OT (บาท/ชั่วโมง)</label>
+                <input type="number" step="0.01" class="form-control form-glass text-light" id="editOvertimeRate">
+              </div>
+            </div>
+          </div>
         </div>
         <div class="modal-footer border-secondary border-opacity-25">
-          <button type="button" class="btn btn-secondary bg-opacity-25 border-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-          <button type="submit" class="btn btn-glass-primary">บันทึกการแก้ไข</button>
+          <button type="button" class="btn btn-glass-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-glass-primary"><i class="fa-solid fa-floppy-disk me-1"></i> บันทึกการแก้ไข</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- Fetch Javascript -->
+<!-- 3. Pay Salary Modal -->
+<div class="modal fade" id="paySalaryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-light glass-card" style="background: rgba(20, 25, 40, 0.95); border: 1px solid rgba(0, 230, 118, 0.3); border-radius: 16px;">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title"><i class="fa-solid fa-money-bill-wave text-success me-2"></i>บันทึกจ่ายเงินค่าจ้างช่าง</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="paySalaryForm">
+        <input type="hidden" id="payMechanicId">
+        <input type="hidden" id="payMonthVal">
+        <div class="modal-body g-3">
+          <div class="mb-3">
+            <label class="form-label small text-muted">ช่างผู้รับเงิน:</label>
+            <div class="h5 fw-bold text-light" id="payMechanicName">-</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-muted">งวดประจำเดือน:</label>
+            <div class="text-info font-monospace fw-bold" id="payMonthText">-</div>
+          </div>
+          <div class="mb-3">
+            <label for="payAmount" class="form-label small fw-bold">ยอดเงินที่จ่ายจริง (บาท) <span class="text-danger">*</span></label>
+            <input type="number" step="0.01" class="form-control form-glass text-light font-monospace h4 fw-bold text-success" id="payAmount" required>
+            <div class="text-xs text-muted">ยอดนี้คำนวณจากวันมาทำงานจริงในระบบเช็คชื่อ สามารถปรับแก้ได้ตามจริง</div>
+          </div>
+          <div class="mb-3">
+            <label for="payNote" class="form-label small fw-bold">บันทึกเพิ่มเติม</label>
+            <input type="text" class="form-control form-glass text-light" id="payNote" placeholder="เช่น โอนเงินผ่านบัญชีธนาคารกสิกรไทย...">
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-glass-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-glass-success"><i class="fa-solid fa-check-circle me-1"></i> ยืนยันบันทึกจ่ายเงิน</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Javascript Logic -->
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     
-    // 1. Add Mechanic Form Submit
+    // 1. Add Mechanic
     const addForm = document.getElementById('addMechanicForm');
-    addForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      const payload = {
-        username: document.getElementById('addUsername').value,
-        password:  document.getElementById('addPassword').value,
-        fullname: document.getElementById('addFullname').value,
-        phone:    document.getElementById('addPhone').value,
-        skills:   document.getElementById('addSkills').value
-      };
-      
-      fetch('/mechanics/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          alert(data.message);
-          window.location.reload();
-        } else {
-          alert('ผิดพลาด: ' + data.message);
-        }
-      })
-      .catch(err => {
-        console.error('Fetch Add Mechanic Error:', err);
-        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    if (addForm) {
+      addForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const payload = {
+          username: document.getElementById('addUsername').value,
+          password: document.getElementById('addPassword').value,
+          fullname: document.getElementById('addFullname').value,
+          phone: document.getElementById('addPhone').value,
+          skills: document.getElementById('addSkills').value,
+          salary_type: document.getElementById('addSalaryType').value,
+          salary_rate: document.getElementById('addSalaryRate').value,
+          overtime_rate: document.getElementById('addOvertimeRate').value
+        };
+        
+        fetch('/mechanics/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('🎉 ' + data.message);
+            window.location.reload();
+          } else {
+            alert('⚠️ ผิดพลาด: ' + data.message);
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+        });
       });
-    });
+    }
 
-    // 2. Edit Button Click
-    const editBtns = document.querySelectorAll('.edit-mechanic-btn');
+    // 2. Edit Mechanic
     const editModal = new bootstrap.Modal(document.getElementById('editMechanicModal'));
-    
-    editBtns.forEach(btn => {
+    document.querySelectorAll('.edit-mechanic-btn').forEach(btn => {
       btn.addEventListener('click', function() {
         document.getElementById('editMechanicId').value = this.dataset.id;
         document.getElementById('editFullname').value = this.dataset.fullname;
         document.getElementById('editPhone').value = this.dataset.phone === 'null' ? '' : this.dataset.phone;
         document.getElementById('editSkills').value = this.dataset.skills === 'null' ? '' : this.dataset.skills;
         document.getElementById('editStatus').value = this.dataset.status;
+        document.getElementById('editSalaryType').value = this.dataset.salaryType || 'daily';
+        document.getElementById('editSalaryRate').value = this.dataset.salaryRate || '500';
+        document.getElementById('editOvertimeRate').value = this.dataset.overtimeRate || '60';
         
         editModal.show();
       });
     });
 
-    // 3. Edit Form Submit
     const editForm = document.getElementById('editMechanicForm');
-    editForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      const id = document.getElementById('editMechanicId').value;
-      const payload = {
-        fullname: document.getElementById('editFullname').value,
-        phone:    document.getElementById('editPhone').value,
-        skills:   document.getElementById('editSkills').value,
-        status:   document.getElementById('editStatus').value
-      };
-      
-      fetch('/mechanics/edit/' + id, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          alert(data.message);
-          window.location.reload();
-        } else {
-          alert('ผิดพลาด: ' + data.message);
-        }
-      })
-      .catch(err => {
-        console.error('Fetch Edit Mechanic Error:', err);
-        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-      });
-    });
-
-    // ==========================================
-    // AJAX Live Filtering & Scroll Preservation
-    // ==========================================
-    const filterForm = document.getElementById('mechanicFilterForm');
-
-    function fetchMechanicsData(url) {
-      const container = document.getElementById('mechanicsContainer');
-      if (container) container.style.opacity = '0.65';
-
-      fetch(url)
-        .then(res => res.text())
-        .then(html => {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(html, 'text/html');
-
-          // Swap Mechanics Container
-          const newContainer = doc.getElementById('mechanicsContainer');
-          if (newContainer && container) {
-            container.innerHTML = newContainer.innerHTML;
-            container.style.opacity = '1';
-            // Re-attach edit and delete listeners on the new content!
-            attachMechanicListeners();
+    if (editForm) {
+      editForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const id = document.getElementById('editMechanicId').value;
+        const payload = {
+          fullname: document.getElementById('editFullname').value,
+          phone: document.getElementById('editPhone').value,
+          skills: document.getElementById('editSkills').value,
+          status: document.getElementById('editStatus').value,
+          salary_type: document.getElementById('editSalaryType').value,
+          salary_rate: document.getElementById('editSalaryRate').value,
+          overtime_rate: document.getElementById('editOvertimeRate').value
+        };
+        
+        fetch('/mechanics/edit/' + id, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('✅ ' + data.message);
+            window.location.reload();
+          } else {
+            alert('⚠️ ผิดพลาด: ' + data.message);
           }
-
-          // Update URL in address bar
-          window.history.pushState({ path: url }, '', url);
         })
         .catch(err => {
-          console.error('Fetch Mechanics Error:', err);
-          if (container) container.style.opacity = '1';
+          console.error(err);
+          alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
         });
+      });
     }
 
-    function attachMechanicListeners() {
-      // Re-attach delete listeners
-      const deleteBtns = document.querySelectorAll('.delete-mechanic-btn');
-      deleteBtns.forEach(btn => {
-        const newBtn = btn.cloneNode(true);
-        btn.parentNode.replaceChild(newBtn, btn);
+    // 3. Pay Salary Modal
+    const payModal = new bootstrap.Modal(document.getElementById('paySalaryModal'));
+    document.querySelectorAll('.pay-salary-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.getElementById('payMechanicId').value = this.dataset.id;
+        document.getElementById('payMechanicName').textContent = this.dataset.fullname;
+        document.getElementById('payMonthVal').value = this.dataset.month;
+        document.getElementById('payMonthText').textContent = this.dataset.month;
+        document.getElementById('payAmount').value = this.dataset.amount || 0;
+        
+        payModal.show();
       });
+    });
 
-      const freshDeleteBtns = document.querySelectorAll('.delete-mechanic-btn');
-      freshDeleteBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-          const id = this.dataset.id;
-          const name = this.dataset.fullname;
-          
-          if (confirm(`คุณต้องการลบรายชื่อช่าง "${name}" ใช่หรือไม่?\nขั้นตอนนี้ไม่สามารถกู้คืนได้`)) {
-            fetch('/mechanics/delete/' + id, {
-              method: 'POST'
-            })
-            .then(res => res.json())
-            .then(data => {
-              if (data.success) {
-                alert(data.message);
-                const searchVal = encodeURIComponent(filterForm.querySelector('input[name="search"]').value);
-                const statusVal = encodeURIComponent(filterForm.querySelector('select[name="status"]').value);
-                const url = `/mechanics?search=${searchVal}&status=${statusVal}`;
-                fetchMechanicsData(url);
-              } else {
-                alert('ผิดพลาด: ' + data.message);
-              }
-            })
-            .catch(err => {
-              console.error('Fetch Delete Mechanic Error:', err);
-              alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-            });
+    const payForm = document.getElementById('paySalaryForm');
+    if (payForm) {
+      payForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const payload = {
+          mechanic_id: document.getElementById('payMechanicId').value,
+          month: document.getElementById('payMonthVal').value,
+          amount: document.getElementById('payAmount').value,
+          note: document.getElementById('payNote').value
+        };
+
+        fetch('/mechanics/pay-salary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('💸 ' + data.message);
+            payModal.hide();
+            window.location.reload();
+          } else {
+            alert('⚠️ ' + data.message);
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+        });
+      });
+    }
+
+    // 4. Delete Mechanic
+    document.querySelectorAll('.delete-mechanic-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const id = this.dataset.id;
+        const name = this.dataset.fullname;
+        if (!confirm(`ต้องการระงับการทำงานของช่าง "${name}" ใช่หรือไม่?`)) return;
+
+        fetch('/mechanics/delete/' + id, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert(data.message);
+            window.location.reload();
+          } else {
+            alert('ผิดพลาด: ' + data.message);
           }
         });
       });
-
-      // Re-attach edit modal button listeners
-      const editBtns = document.querySelectorAll('.edit-mechanic-btn');
-      editBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-          // Fill form data as normal
-          document.getElementById('editId').value = this.dataset.id;
-          document.getElementById('editFullname').value = this.dataset.fullname;
-          document.getElementById('editPhone').value = this.dataset.phone;
-          document.getElementById('editSkills').value = this.dataset.skills || '';
-          document.getElementById('editStatus').value = this.dataset.status;
-          
-          const editModal = new bootstrap.Modal(document.getElementById('editMechanicModal'));
-          editModal.show();
-        });
-      });
-    }
-
-    // Intercept form submit
-    filterForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      const searchVal = encodeURIComponent(this.querySelector('input[name="search"]').value);
-      const statusVal = encodeURIComponent(this.querySelector('select[name="status"]').value);
-      const url = `/mechanics?search=${searchVal}&status=${statusVal}`;
-      fetchMechanicsData(url);
     });
-
-    // Intercept select status change (auto-submit)
-    const selectStatus = filterForm.querySelector('select[name="status"]');
-    if (selectStatus) {
-      selectStatus.addEventListener('change', function() {
-        const searchInput = filterForm.querySelector('input[name="search"]');
-        const searchVal = encodeURIComponent(searchInput ? searchInput.value : '');
-        const statusVal = encodeURIComponent(this.value);
-        const url = `/mechanics?search=${searchVal}&status=${statusVal}`;
-        fetchMechanicsData(url);
-      });
-    }
-
-    // Foolproof search button click
-    const searchBtn = filterForm.querySelector('button[type="submit"]');
-    if (searchBtn) {
-      searchBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        const searchInput = filterForm.querySelector('input[name="search"]');
-        const selectStatus = filterForm.querySelector('select[name="status"]');
-        const searchVal = encodeURIComponent(searchInput ? searchInput.value : '');
-        const statusVal = encodeURIComponent(selectStatus ? selectStatus.value : '');
-        const url = `/mechanics?search=${searchVal}&status=${statusVal}`;
-        fetchMechanicsData(url);
-      });
-    }
-
-    // Intercept Enter keypress in search input
-    const searchInput = filterForm.querySelector('input[name="search"]');
-    if (searchInput) {
-      searchInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          const selectStatus = filterForm.querySelector('select[name="status"]');
-          const searchVal = encodeURIComponent(this.value);
-          const statusVal = encodeURIComponent(selectStatus ? selectStatus.value : '');
-          const url = `/mechanics?search=${searchVal}&status=${statusVal}`;
-          fetchMechanicsData(url);
-        }
-      });
-    }
-
-    // Initial listeners
-    attachMechanicListeners();
-
   });
 </script>
 

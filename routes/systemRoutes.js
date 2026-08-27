@@ -8,7 +8,9 @@ router.use(isOwner); // Settings are restricted to owner role
 
 router.get('/', systemController.getSettings);
 router.post('/change-password', systemController.updatePassword);
+router.post('/payment', systemController.updatePaymentSettings);
 router.post('/line', systemController.updateLineSettings);
+router.post('/line/test', systemController.testLineNotification);
 router.get('/backup', systemController.backupDatabase);
 router.post('/restore', systemController.restoreDatabase);
 

@@ -417,6 +417,27 @@ const closeRepair = async (req, res) => {
   }
 };
 
+// Send full Quotation / Invoice Flex message via LINE
+const sendLineInvoice = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await notificationService.sendInvoiceQuotationNotification(id);
+    if (!result.success) {
+      return res.status(400).json({ success: false, message: result.message || result.error });
+    }
+
+    let destMsg = 'ส่งเข้า LINE แอดมินเรียบร้อยแล้ว';
+    if (result.sentToCustomer) {
+      destMsg = `ส่งเข้า LINE คุณ ${result.customerName} และแอดมินเรียบร้อยแล้ว`;
+    }
+
+    res.json({ success: true, message: `🎉 ${destMsg}!` });
+  } catch (err) {
+    console.error('Send Line Invoice Error:', err);
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการส่ง LINE: ' + err.message });
+  }
+};
+
 module.exports = {
   getAllRepairs,
   getRepairDetail,
@@ -424,5 +445,6 @@ module.exports = {
   updateEstimate,
   assignMechanicAndParts,
   updateStatus,
-  closeRepair
+  closeRepair,
+  sendLineInvoice
 };

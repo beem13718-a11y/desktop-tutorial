@@ -13,6 +13,14 @@
   
   <!-- Custom CSS -->
   <link rel="stylesheet" href="/css/style.css">
+
+  <!-- Instant Theme Initializer (Pre-render to prevent white/dark flashes) -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('garageflow_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    })();
+  </script>
 </head>
 <body>
   
@@ -55,6 +63,9 @@
           <a href="/finances" class="top-nav-link <%= typeof activePage !== 'undefined' && activePage === 'finances' ? 'active' : '' %>">
             <i class="fa-solid fa-wallet text-success"></i> การเงิน
           </a>
+          <a href="/attendance" class="top-nav-link <%= typeof activePage !== 'undefined' && activePage === 'attendance' ? 'active' : '' %>">
+            <i class="fa-solid fa-clipboard-user text-primary"></i> เช็คชื่อ
+          </a>
           <% if (typeof user !== 'undefined' && user && user.role === 'owner') { %>
             <a href="/mechanics" class="top-nav-link <%= typeof activePage !== 'undefined' && activePage === 'mechanics' ? 'active' : '' %>">
               <i class="fa-solid fa-user-gear text-info"></i> ช่างซ่อม
@@ -62,7 +73,13 @@
           <% } %>
         </nav>
         
-        <div class="header-right">
+        <div class="header-right d-flex align-items-center gap-2">
+          <!-- Light / Dark Theme Switcher Button -->
+          <button type="button" class="btn btn-glass-secondary py-1 px-2.5 d-flex align-items-center gap-1.5 shadow-sm" id="themeToggleBtn" title="สลับโหมดมืด / สว่าง (Dark / Light Theme)" style="border-radius: 8px; font-size: 0.82rem; height: 34px;">
+            <i class="fa-solid fa-moon text-warning" id="themeIcon"></i>
+            <span class="d-none d-sm-inline small" id="themeLabel">โหมดมืด</span>
+          </button>
+
           <!-- Notification Bell -->
           <div class="notifications-dropdown">
             <button class="notifications-trigger" title="ระบบแจ้งเตือน">

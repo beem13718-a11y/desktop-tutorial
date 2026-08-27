@@ -13,5 +13,6 @@ router.post('/estimate/:id', repairController.updateEstimate);
 router.post('/assign-parts/:id', repairController.assignMechanicAndParts);
 router.post('/status/:id', repairController.updateStatus);
 router.post('/close/:id', upload.single('car_photo_after'), repairController.closeRepair);
+router.post('/send-line-invoice/:id', repairController.sendLineInvoice);
 
 module.exports = router;

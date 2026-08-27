@@ -31,35 +31,89 @@
       </form>
     </div>
 
-    <!-- LINE Integration Card -->
+    <!-- PromptPay & Bank Settings Card -->
     <div class="glass-card mb-4">
-      <h5 class="text-info mb-4"><i class="fa-brands fa-line me-2 text-success" style="font-size: 1.25rem;"></i>เชื่อมต่อระบบ LINE (LINE API Integration)</h5>
-      <form id="lineConfigForm" class="g-3">
-        <!-- LINE Notify -->
-        <div class="mb-4">
-          <label for="lineNotifyToken" class="form-label text-light fw-bold small"><i class="fa-solid fa-bell text-warning me-1"></i> 1. LINE Notify Token (แจ้งเตือนเข้ากลุ่มไลน์)</label>
-          <p class="text-muted" style="font-size: 0.75rem; margin-top: -5px; line-height: 1.3;">ใช้ส่งประวัติใบซ่อมเข้ากลุ่มช่างและกลุ่มผู้ปฏิบัติงานอู่เพื่อแจ้งเตือนงานใหม่ งานซ่อมเสร็จ และการรับเงิน</p>
-          <input type="password" class="form-control form-glass text-light" id="lineNotifyToken" value="<%= lineSettings.line_notify_token || '' %>" placeholder="กรอก LINE Notify Token ของกลุ่มไลน์...">
-        </div>
-        
-        <hr class="border-secondary border-opacity-25 my-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="text-warning mb-0"><i class="fa-solid fa-qrcode me-2 text-warning"></i>ตั้งค่าพร้อมเพย์ & บัญชีรับเงิน (PromptPay)</h5>
+        <span class="badge bg-warning bg-opacity-25 text-warning border border-warning">Dynamic QR Code</span>
+      </div>
+      <p class="text-muted small mb-4">กำหนดเบอร์พร้อมเพย์และชื่อบัญชีอู่ สำหรับสร้าง QR Code รับเงินในใบเสนอราคาและใบเสร็จรับเงินอัตโนมัติ</p>
 
-        <!-- LINE Messaging API -->
+      <form id="paymentConfigForm" class="g-3">
         <div class="mb-3">
-          <label for="lineChannelToken" class="form-label text-light fw-bold small"><i class="fa-solid fa-paper-plane text-info me-1"></i> 2. LINE OA Channel Access Token (แจ้งเตือนลูกค้าโดยตรง)</label>
-          <p class="text-muted" style="font-size: 0.75rem; margin-top: -5px; line-height: 1.3;">ใช้ส่งข้อความอัปเดตใบแจ้งซ่อม หรือราคาแจ้งลูกค้าโดยตรงทางแชท LINE OA (LINE Official Account)</p>
-          <input type="password" class="form-control form-glass text-light mb-2" id="lineChannelToken" value="<%= lineSettings.line_channel_token || '' %>" placeholder="กรอก Channel Access Token (Long-lived)...">
+          <label for="promptpayNumber" class="form-label text-light fw-bold small">
+            <i class="fa-solid fa-mobile-screen-button text-success me-1"></i> เบอร์โทรศัพท์ / เลขประจำตัวผู้เสียภาษีพร้อมเพย์ <span class="text-danger">*</span>
+          </label>
+          <p class="text-muted" style="font-size: 0.75rem; margin-top: -5px; line-height: 1.3;">กรอกเบอร์มือถือ 10 หลัก (เช่น <code>0812345678</code>) หรือเลขประจำตัวผู้เสียภาษี/นิติบุคคล 13 หลัก</p>
+          <input type="text" class="form-control form-glass text-light font-monospace fw-bold" id="promptpayNumber" value="<%= lineSettings.promptpay_number || '0812345678' %>" placeholder="เช่น 0812345678 หรือ 010555xxxxxxx" required>
         </div>
-        
+
         <div class="mb-3">
-          <label for="lineChannelSecret" class="form-label text-light fw-bold small">LINE OA Channel Secret</label>
-          <input type="password" class="form-control form-glass text-light" id="lineChannelSecret" value="<%= lineSettings.line_channel_secret || '' %>" placeholder="กรอก Channel Secret...">
+          <label for="promptpayName" class="form-label text-light fw-bold small">
+            <i class="fa-solid fa-store text-info me-1"></i> ชื่อบัญชี / ชื่อร้านค้าที่จะแสดงบน QR Code
+          </label>
+          <input type="text" class="form-control form-glass text-light" id="promptpayName" value="<%= lineSettings.promptpay_name || 'BT Auto Garage' %>" placeholder="เช่น อู่ บีที ออโต้ เซอร์วิส">
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-sm-6">
+            <label for="bankName" class="form-label text-light small fw-bold"><i class="fa-solid fa-building-columns text-warning me-1"></i> ธนาคาร</label>
+            <input type="text" class="form-control form-glass text-light" id="bankName" value="<%= lineSettings.bank_name || 'กสิกรไทย (KBANK)' %>" placeholder="เช่น กสิกรไทย, ไทยพาณิชย์">
+          </div>
+          <div class="col-sm-6">
+            <label for="bankAccountNo" class="form-label text-light small fw-bold"><i class="fa-solid fa-credit-card text-info me-1"></i> เลขที่บัญชีธนาคาร</label>
+            <input type="text" class="form-control form-glass text-light font-monospace" id="bankAccountNo" value="<%= lineSettings.bank_account_no || '' %>" placeholder="เช่น 123-4-56789-0">
+          </div>
         </div>
 
         <div class="d-grid mt-4">
-          <button type="submit" class="btn btn-glass-success w-100">
-            <i class="fa-solid fa-floppy-disk me-1"></i> บันทึกการเชื่อมต่อ LINE
+          <button type="submit" class="btn btn-warning text-dark fw-bold shadow-sm" style="background-color: #ffc107 !important; border-color: #ffc107 !important;">
+            <i class="fa-solid fa-floppy-disk me-1"></i> บันทึกข้อมูลพร้อมเพย์ & บัญชีรับเงิน
           </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- LINE Integration Card -->
+    <div class="glass-card mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="text-info mb-0"><i class="fa-brands fa-line me-2 text-success" style="font-size: 1.35rem;"></i>เชื่อมต่อระบบ LINE (LINE Official Account)</h5>
+        <span class="badge bg-success bg-opacity-25 text-success border border-success">Messaging API</span>
+      </div>
+      <p class="text-muted small mb-4">ระบบแจ้งเตือนแบบใหม่ผ่าน LINE Official Account ส่งตรงหาลูกค้าและกลุ่มช่างแบบอัตโนมัติด้วยการ์ด Flex Message</p>
+      
+      <form id="lineConfigForm" class="g-3">
+        <!-- LINE Messaging API Channel Access Token -->
+        <div class="mb-3">
+          <label for="lineChannelToken" class="form-label text-light fw-bold small"><i class="fa-solid fa-key text-warning me-1"></i> 1. LINE OA Channel Access Token (Long-lived) <span class="text-danger">*</span></label>
+          <p class="text-muted" style="font-size: 0.75rem; margin-top: -5px; line-height: 1.3;">นำมาจาก LINE Developers Console &gt; Messaging API &gt; Channel access token</p>
+          <input type="password" class="form-control form-glass text-light" id="lineChannelToken" value="<%= lineSettings.line_channel_token || '' %>" placeholder="กรอก Channel Access Token (ขึ้นต้นด้วย v1/v2 หรือตัวอักษรยาวๆ)...">
+        </div>
+        
+        <!-- LINE Owner User ID -->
+        <div class="mb-3">
+          <label for="lineAdminId" class="form-label text-light fw-bold small"><i class="fa-solid fa-user-shield text-info me-1"></i> 2. LINE User ID ของเจ้าของร้าน (แจ้งเตือน & สั่งการส่วนตัว 1-on-1)</label>
+          <p class="text-muted" style="font-size: 0.75rem; margin-top: -5px; line-height: 1.3;">User ID บัญชีส่วนตัวของคุณ (ขึ้นต้นด้วย <code>U...</code> ดูได้จากด้านล่างสุดของแท็บ Basic settings ใน LINE Developers Console)</p>
+          <input type="text" class="form-control form-glass text-light" id="lineAdminId" value="<%= lineSettings.line_admin_id || '' %>" placeholder="เช่น U1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d">
+        </div>
+
+        <!-- LINE Channel Secret -->
+        <div class="mb-3">
+          <label for="lineChannelSecret" class="form-label text-light fw-bold small"><i class="fa-solid fa-shield-halved text-secondary me-1"></i> 3. LINE OA Channel Secret</label>
+          <input type="password" class="form-control form-glass text-light" id="lineChannelSecret" value="<%= lineSettings.line_channel_secret || '' %>" placeholder="กรอก Channel Secret (ดูได้จากแท็บ Basic settings)...">
+        </div>
+
+        <div class="row g-2 mt-4">
+          <div class="col-sm-7">
+            <button type="submit" class="btn btn-glass-success w-100">
+              <i class="fa-solid fa-floppy-disk me-1"></i> บันทึกการตั้งค่า LINE
+            </button>
+          </div>
+          <div class="col-sm-5">
+            <button type="button" id="btnTestLine" class="btn btn-glass-primary w-100">
+              <i class="fa-solid fa-paper-plane me-1"></i> ทดสอบส่ง LINE
+            </button>
+          </div>
         </div>
       </form>
     </div>
@@ -213,6 +267,40 @@
       reader.readAsText(file);
     });
 
+    // 2.5 PromptPay settings form submit
+    const paymentForm = document.getElementById('paymentConfigForm');
+    if (paymentForm) {
+      paymentForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const payload = {
+          promptpay_number: document.getElementById('promptpayNumber').value,
+          promptpay_name: document.getElementById('promptpayName').value,
+          bank_name: document.getElementById('bankName').value,
+          bank_account_no: document.getElementById('bankAccountNo').value
+        };
+        
+        fetch('/settings/payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('✅ ' + data.message);
+            window.location.reload();
+          } else {
+            alert('⚠️ ' + data.message);
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+        });
+      });
+    }
+
     // 3. LINE settings form submit
     const lineForm = document.getElementById('lineConfigForm');
     if (lineForm) {
@@ -220,8 +308,8 @@
         e.preventDefault();
         
         const payload = {
-          line_notify_token: document.getElementById('lineNotifyToken').value,
           line_channel_token: document.getElementById('lineChannelToken').value,
+          line_admin_id: document.getElementById('lineAdminId').value,
           line_channel_secret: document.getElementById('lineChannelSecret').value
         };
         
@@ -242,6 +330,50 @@
         .catch(err => {
           console.error(err);
           alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+        });
+      });
+    }
+
+    // 4. Test LINE Notification Button
+    const btnTestLine = document.getElementById('btnTestLine');
+    if (btnTestLine) {
+      btnTestLine.addEventListener('click', function() {
+        const adminId = document.getElementById('lineAdminId').value;
+        const channelToken = document.getElementById('lineChannelToken').value;
+
+        if (!channelToken) {
+          alert('กรุณากรอก LINE OA Channel Access Token ก่อนกดทดสอบ');
+          return;
+        }
+
+        if (!adminId) {
+          alert('กรุณากรอก LINE Admin User ID (เช่น U1a2b3c4...) เพื่อระบุผู้รับข้อความทดสอบ');
+          return;
+        }
+
+        btnTestLine.disabled = true;
+        btnTestLine.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> กำลังส่ง...';
+
+        fetch('/settings/line/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_id: adminId })
+        })
+        .then(res => res.json())
+        .then(data => {
+          btnTestLine.disabled = false;
+          btnTestLine.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> ทดสอบส่ง LINE';
+          if (data.success) {
+            alert('🎉 ' + data.message);
+          } else {
+            alert('⚠️ ส่งข้อความไม่สำเร็จ: ' + data.message);
+          }
+        })
+        .catch(err => {
+          btnTestLine.disabled = false;
+          btnTestLine.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> ทดสอบส่ง LINE';
+          console.error(err);
+          alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
         });
       });
     }

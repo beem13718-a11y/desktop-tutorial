@@ -63,7 +63,9 @@ const mechanicRoutes = require('./routes/mechanicRoutes');
 const repairRoutes = require('./routes/repairRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
 const financeRoutes = require('./routes/financeRoutes');
+const attendanceRoutes = require('./routes/attendanceRoutes');
 const systemRoutes = require('./routes/systemRoutes');
+const qrRoutes = require('./routes/qrRoutes');
 
 const systemController = require('./controllers/systemController');
 
@@ -71,18 +73,13 @@ const systemController = require('./controllers/systemController');
 // ROUTE MOUNTING
 // ==========================================
 // Rate Limiters
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 requests per windowMs
-  message: 'Too many login attempts from this IP, please try again after 15 minutes'
-});
 const webhookLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 30 // Limit each IP to 30 requests per minute
+  max: 100
 });
 
 app.post('/line/webhook', webhookLimiter, systemController.lineWebhook);
-app.use('/auth', authLimiter, authRoutes);
+app.use('/auth', authRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/customers', customerRoutes);
 app.use('/vehicles', vehicleRoutes);
@@ -90,7 +87,9 @@ app.use('/mechanics', mechanicRoutes);
 app.use('/repairs', repairRoutes);
 app.use('/inventory', inventoryRoutes);
 app.use('/finances', financeRoutes);
+app.use('/attendance', attendanceRoutes);
 app.use('/settings', systemRoutes);
+app.use('/api/qr', qrRoutes);
 
 // Root redirects to dashboard
 app.get('/', (req, res) => {

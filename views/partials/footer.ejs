@@ -25,6 +25,35 @@
         });
       }
 
+      // Theme Switcher (Dark / Light Mode)
+      const themeToggleBtn = document.getElementById('themeToggleBtn');
+      const themeIcon = document.getElementById('themeIcon');
+      const themeLabel = document.getElementById('themeLabel');
+
+      function updateThemeUI(theme) {
+        if (theme === 'light') {
+          if (themeIcon) themeIcon.className = 'fa-solid fa-sun text-warning';
+          if (themeLabel) themeLabel.textContent = 'โหมดสว่าง';
+        } else {
+          if (themeIcon) themeIcon.className = 'fa-solid fa-moon text-warning';
+          if (themeLabel) themeLabel.textContent = 'โหมดมืด';
+        }
+      }
+
+      const initialTheme = localStorage.getItem('garageflow_theme') || 'dark';
+      updateThemeUI(initialTheme);
+
+      if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', function() {
+          const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+          const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+          
+          document.documentElement.setAttribute('data-theme', newTheme);
+          localStorage.setItem('garageflow_theme', newTheme);
+          updateThemeUI(newTheme);
+        });
+      }
+
       // Scroll position preservation on reload/submit (Same Path Only)
       const savedScroll = sessionStorage.getItem('scrollPosition');
       const savedPath = sessionStorage.getItem('scrollPath');

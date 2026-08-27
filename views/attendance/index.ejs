@@ -1,0 +1,447 @@
+<%- include('../partials/header') %>
+
+<!-- Page Title -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+  <div>
+    <h2 class="page-title mb-1"><i class="fa-solid fa-clipboard-user me-2 text-primary"></i>ระบบเช็คชื่อ & บันทึกเวลาปฏิบัติงานลูกจ้าง</h2>
+    <div class="text-muted small">ดึงรายชื่อช่างที่มีในร้านโดยตรง เลือกระบุเวลาเข้า-ออกงาน บันทึกการลา และแก้ไขข้อมูลได้สะดวก</div>
+  </div>
+</div>
+
+<!-- Summary Metric Cards (ลูกจ้างเท่านั้น) -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-2 col-md-4">
+    <div class="glass-card p-3 h-100 text-center border-bottom border-primary border-3">
+      <div class="text-muted small mb-1">ลูกจ้างทั้งหมด</div>
+      <div class="h3 mb-0 fw-bold text-light font-monospace"><%= summary.totalStaff %></div>
+      <div class="text-xs text-muted mt-1">ช่างประจำอู่</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-lg-2 col-md-4">
+    <div class="glass-card p-3 h-100 text-center border-bottom border-success border-3">
+      <div class="text-muted small mb-1">มาทำงานปกติ</div>
+      <div class="h3 mb-0 fw-bold text-success font-monospace"><%= summary.presentCount %></div>
+      <div class="text-xs text-muted mt-1">ตรงเวลา</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-lg-2 col-md-4">
+    <div class="glass-card p-3 h-100 text-center border-bottom border-warning border-3">
+      <div class="text-muted small mb-1">มาสาย</div>
+      <div class="h3 mb-0 fw-bold text-warning font-monospace"><%= summary.lateCount %></div>
+      <div class="text-xs text-muted mt-1">สายกว่ากำหนด</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-lg-2 col-md-4">
+    <div class="glass-card p-3 h-100 text-center border-bottom border-info border-3">
+      <div class="text-muted small mb-1">ลางาน</div>
+      <div class="h3 mb-0 fw-bold text-info font-monospace"><%= summary.leaveCount %></div>
+      <div class="text-xs text-muted mt-1">ป่วย/กิจ/พักร้อน</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-lg-2 col-md-4">
+    <div class="glass-card p-3 h-100 text-center border-bottom border-danger border-3">
+      <div class="text-muted small mb-1">ขาดงาน</div>
+      <div class="h3 mb-0 fw-bold text-danger font-monospace"><%= summary.absentCount %></div>
+      <div class="text-xs text-muted mt-1">ไม่มาทำงาน</div>
+    </div>
+  </div>
+
+  <div class="col-6 col-lg-2 col-md-4">
+    <div class="glass-card p-3 h-100 text-center border-bottom border-secondary border-3">
+      <div class="text-muted small mb-1">ยังไม่เช็คชื่อ</div>
+      <div class="h3 mb-0 fw-bold text-muted font-monospace"><%= summary.notClockedInCount %></div>
+      <div class="text-xs text-muted mt-1">รอดำเนินการ</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Bar (Date Selector) -->
+<div class="glass-card mb-4 py-3">
+  <form action="/attendance" method="GET" class="row g-3 align-items-center">
+    <div class="col-md-4 col-sm-6">
+      <div class="input-group">
+        <span class="input-group-text form-glass text-muted"><i class="fa-solid fa-calendar-day"></i></span>
+        <input type="date" class="form-control form-glass text-light" name="date" value="<%= selectedDate %>" onchange="this.form.submit()">
+      </div>
+    </div>
+    <div class="col-md-5 col-sm-6">
+      <div class="text-muted small">
+        <% if (selectedDate === todayStr) { %>
+          <span class="badge bg-success bg-opacity-25 text-success border border-success">📅 วันนี้ (Today) - เปิดให้แก้ไข/บันทึกได้ทันที</span>
+        <% } else if (isPastDate) { %>
+          <span class="badge bg-warning bg-opacity-25 text-warning border border-warning">🔒 ข้อมูลประวัติย้อนหลัง: <%= new Date(selectedDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) %></span>
+        <% } else { %>
+          <span>ข้อมูลล่วงหน้า: <%= new Date(selectedDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) %></span>
+        <% } %>
+      </div>
+    </div>
+    <div class="col-md-3 text-md-end">
+      <a href="/attendance" class="btn btn-glass-secondary btn-sm">
+        <i class="fa-solid fa-rotate-left me-1"></i> วันนี้
+      </a>
+    </div>
+  </form>
+</div>
+
+<!-- Past Date Lock Notification & Action Buttons (Unlock / Cancel) -->
+<% if (isPastDate) { %>
+  <div class="alert alert-warning py-2 px-3 d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2 border-0" style="background: rgba(255, 193, 7, 0.12); border-left: 4px solid #ffc107 !important; border-radius: 8px;">
+    <div class="text-warning small">
+      <i class="fa-solid fa-lock me-1"></i> <strong>ประวัติการทำงานย้อนหลัง:</strong> ล็อกการบันทึกอัตโนมัติ เพื่อป้องกันการลงเวลาผิดพลาด
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <% if (isOwner) { %>
+        <button type="button" id="btnUnlockPastEdit" class="btn btn-warning btn-sm text-dark fw-bold shadow-sm">
+          <i class="fa-solid fa-unlock-keyhole me-1"></i> ปลดล็อกเพื่อแก้ไขข้อมูลย้อนหลัง (เจ้าของร้าน)
+        </button>
+      <% } %>
+      <!-- Cancel / Back Button placed on the same row -->
+      <a href="/attendance" class="btn btn-danger btn-sm text-white fw-bold shadow-sm px-3" style="background-color: #dc3545 !important; border-color: #dc3545 !important;">
+        <i class="fa-solid fa-xmark me-1"></i> ยกเลิก
+      </a>
+      <button type="button" id="btnRelockPastEdit" class="btn btn-secondary btn-sm text-white fw-bold d-none shadow-sm px-3" onclick="window.location.reload()">
+        <i class="fa-solid fa-lock me-1"></i> ล็อกข้อมูลใหม่
+      </button>
+    </div>
+  </div>
+<% } %>
+
+<style>
+  /* High Contrast Time Picker Clock Icons */
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(2) drop-shadow(0 0 3px #00e676);
+    cursor: pointer;
+    opacity: 1 !important;
+    transform: scale(1.15);
+    margin-right: 4px;
+  }
+  .row-clock-out::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(2) drop-shadow(0 0 3px #00d2ff) !important;
+  }
+  .time-input-group .input-group-text {
+    font-size: 0.95rem;
+    min-width: 38px;
+    justify-content: center;
+  }
+</style>
+
+<!-- Staff Attendance Table -->
+<div class="glass-card mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="text-light mb-0"><i class="fa-solid fa-users-gear me-2 text-info"></i>รายชื่อลูกจ้าง & ช่างซ่อม (<%= selectedDate %>)</h5>
+    <span class="text-muted small">
+      <% if (isPastDate) { %>
+        <span class="text-warning" id="lockStatusNotice"><i class="fa-solid fa-lock me-1"></i>(สถานะ: อ่านอย่างเดียว / ปลดล็อกเพื่อแก้ไข)</span>
+      <% } else { %>
+        <span class="text-success"><i class="fa-solid fa-pen-to-square me-1"></i>สามารถเลือกสถานะและเวลาได้โดยตรงในตาราง</span>
+      <% } %>
+    </span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table-excel text-light">
+      <thead>
+        <tr>
+          <th class="text-center" style="width: 4%;">#</th>
+          <th style="width: 20%;">ชื่อลูกจ้าง / ช่าง</th>
+          <th class="text-center" style="width: 15%;"><i class="fa-solid fa-clock text-success me-1"></i> เวลาเข้างาน</th>
+          <th class="text-center" style="width: 15%;"><i class="fa-solid fa-flag-checkered text-info me-1"></i> เวลาออกงาน</th>
+          <th class="text-center" style="width: 17%;"><i class="fa-solid fa-clipboard-check text-warning me-1"></i> สถานะ</th>
+          <th style="width: 17%;">หมายเหตุ / เหตุผลลา</th>
+          <% if (isOwner) { %>
+            <th class="text-center" style="width: 12%;">การจัดการ</th>
+          <% } %>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (staffStatusList.length === 0) { %>
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">ไม่พบรายชื่อลูกจ้างหรือช่างในระบบ</td>
+          </tr>
+        <% } else { %>
+          <% staffStatusList.forEach((s, idx) => { 
+               const clockInVal = s.attendance && s.attendance.clock_in ? new Date(s.attendance.clock_in).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '08:30';
+               const clockOutVal = s.attendance && s.attendance.clock_out ? new Date(s.attendance.clock_out).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '17:30';
+               const notesVal = s.attendance && s.attendance.notes ? s.attendance.notes : '';
+               const currentStatusVal = s.currentStatus || 'present';
+          %>
+            <tr data-user-id="<%= s.id %>">
+              <td class="text-center"><%= idx + 1 %></td>
+              <td>
+                <div class="fw-bold text-light"><%= s.fullname %></div>
+                <div class="text-muted small font-monospace"><%= s.phone || '-' %> • [<%= s.skills || 'ช่างทั่วไป' %>]</div>
+              </td>
+              
+              <!-- Clock In Column (High Contrast Icons) -->
+              <td class="text-center">
+                <% if (isOwner) { %>
+                  <div class="input-group input-group-sm time-input-group">
+                    <span class="input-group-text bg-success bg-opacity-25 text-success border border-success border-opacity-50">
+                      <i class="fa-solid fa-right-to-bracket"></i>
+                    </span>
+                    <input type="time" class="form-control form-glass text-center text-light row-clock-in fw-bold" 
+                           value="<%= clockInVal %>"
+                           <%= isPastDate ? 'disabled' : '' %>
+                           style="font-size: 0.95rem; letter-spacing: 0.5px;">
+                  </div>
+                <% } else { %>
+                  <span class="font-monospace text-success fw-bold">
+                    <i class="fa-solid fa-clock me-1"></i> <%= s.attendance && s.attendance.clock_in ? new Date(s.attendance.clock_in).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.' : '-' %>
+                  </span>
+                <% } %>
+              </td>
+
+              <!-- Clock Out Column (High Contrast Icons) -->
+              <td class="text-center">
+                <% if (isOwner) { %>
+                  <div class="input-group input-group-sm time-input-group">
+                    <span class="input-group-text bg-info bg-opacity-25 text-info border border-info border-opacity-50">
+                      <i class="fa-solid fa-right-from-bracket"></i>
+                    </span>
+                    <input type="time" class="form-control form-glass text-center text-light row-clock-out fw-bold" 
+                           value="<%= clockOutVal %>"
+                           <%= isPastDate ? 'disabled' : '' %>
+                           style="font-size: 0.95rem; letter-spacing: 0.5px;">
+                  </div>
+                <% } else { %>
+                  <span class="font-monospace text-info fw-bold">
+                    <i class="fa-solid fa-flag-checkered me-1"></i> <%= s.attendance && s.attendance.clock_out ? new Date(s.attendance.clock_out).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.' : '-' %>
+                  </span>
+                <% } %>
+              </td>
+
+              <!-- Status Dropdown Column (High Contrast Icons) -->
+              <td class="text-center">
+                <% if (isOwner) { %>
+                  <div class="input-group input-group-sm time-input-group">
+                    <span class="input-group-text bg-warning bg-opacity-25 text-warning border border-warning border-opacity-50">
+                      <i class="fa-solid fa-user-check"></i>
+                    </span>
+                    <select class="form-select form-glass text-light fw-bold row-status" <%= isPastDate ? 'disabled' : '' %> style="font-size: 0.88rem;">
+                      <option value="present" <%= currentStatusVal === 'present' ? 'selected' : '' %>>✅ มาทำงาน (ตรงเวลา)</option>
+                      <option value="late" <%= currentStatusVal === 'late' ? 'selected' : '' %>>⚠️ มาสาย</option>
+                      <option value="leave_business" <%= currentStatusVal === 'leave_business' ? 'selected' : '' %>>🏖️ ลากิจ</option>
+                      <option value="leave_sick" <%= currentStatusVal === 'leave_sick' ? 'selected' : '' %>>🏥 ลาป่วย</option>
+                      <option value="leave_vacation" <%= currentStatusVal === 'leave_vacation' ? 'selected' : '' %>>🌴 ลาพักร้อน</option>
+                      <option value="absent" <%= currentStatusVal === 'absent' ? 'selected' : '' %>>❌ ขาดงาน</option>
+                    </select>
+                  </div>
+                <% } else { %>
+                  <% if (currentStatusVal === 'present') { %>
+                    <span class="badge bg-success bg-opacity-25 text-success border border-success px-3 py-2" style="font-size: 0.85rem;"><i class="fa-solid fa-circle-check me-1"></i>ตรงเวลา</span>
+                  <% } else if (currentStatusVal === 'late') { %>
+                    <span class="badge bg-warning bg-opacity-25 text-warning border border-warning px-3 py-2" style="font-size: 0.85rem;"><i class="fa-solid fa-triangle-exclamation me-1"></i>มาสาย</span>
+                  <% } else if (currentStatusVal === 'leave_sick') { %>
+                    <span class="badge bg-info bg-opacity-25 text-info border border-info px-3 py-2" style="font-size: 0.85rem;"><i class="fa-solid fa-notes-medical me-1"></i>ลาป่วย</span>
+                  <% } else if (currentStatusVal === 'leave_business') { %>
+                    <span class="badge bg-info bg-opacity-25 text-info border border-info px-3 py-2" style="font-size: 0.85rem;"><i class="fa-solid fa-umbrella-beach me-1"></i>ลากิจ</span>
+                  <% } else if (currentStatusVal === 'leave_vacation') { %>
+                    <span class="badge bg-info bg-opacity-25 text-info border border-info px-3 py-2" style="font-size: 0.85rem;"><i class="fa-solid fa-plane me-1"></i>ลาพักร้อน</span>
+                  <% } else if (currentStatusVal === 'absent') { %>
+                    <span class="badge bg-danger bg-opacity-25 text-danger border border-danger px-3 py-2" style="font-size: 0.85rem;"><i class="fa-solid fa-circle-xmark me-1"></i>ขาดงาน</span>
+                  <% } else { %>
+                    <span class="badge bg-secondary bg-opacity-25 text-muted px-3 py-2" style="font-size: 0.85rem;"><i class="fa-solid fa-hourglass-half me-1"></i>ยังไม่ลงเวลา</span>
+                  <% } %>
+                <% } %>
+              </td>
+
+              <!-- Notes Column -->
+              <td>
+                <% if (isOwner) { %>
+                  <input type="text" class="form-control form-control-sm form-glass text-light row-notes" 
+                         value="<%= notesVal %>" 
+                         placeholder="หมายเหตุ / เหตุผล..."
+                         <%= isPastDate ? 'disabled' : '' %>>
+                <% } else { %>
+                  <span class="text-muted small"><%= notesVal || '-' %></span>
+                <% } %>
+              </td>
+
+              <!-- Action Column: Save Button -->
+              <% if (isOwner) { %>
+                <td class="text-center">
+                  <button type="button" class="btn btn-glass-primary btn-sm btn-save-row px-3" data-user-id="<%= s.id %>" <%= isPastDate ? 'disabled' : '' %> title="บันทึกข้อมูลแถวนี้">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> บันทึก
+                  </button>
+                </td>
+              <% } %>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Owner Password Unlock Modal -->
+<% if (isOwner && isPastDate) { %>
+  <div class="modal fade" id="unlockPasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content glass-card text-light" style="background: rgba(20, 25, 40, 0.95); border: 1px solid rgba(255, 193, 7, 0.4); border-radius: 16px;">
+        <div class="modal-header border-secondary border-opacity-25">
+          <h6 class="modal-title"><i class="fa-solid fa-shield-halved text-warning me-2"></i>ยืนยันรหัสผ่านเจ้าของร้าน</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="unlockPasswordForm">
+          <div class="modal-body">
+            <div class="text-xs text-muted mb-3">
+              เพื่อความปลอดภัย กรุณากรอกรหัสผ่านบัญชีเจ้าของร้านเพื่อปลดล็อกการแก้ไขข้อมูลย้อนหลัง
+            </div>
+            <div class="mb-3">
+              <label for="ownerUnlockPassword" class="form-label small fw-bold">รหัสผ่านเจ้าของร้าน</label>
+              <input type="password" class="form-control form-glass text-light" id="ownerUnlockPassword" required placeholder="ใส่รหัสผ่าน Login...">
+            </div>
+            <div id="unlockErrorMsg" class="alert alert-danger py-1 px-2 small d-none"></div>
+          </div>
+          <div class="modal-footer border-secondary border-opacity-25 gap-2">
+            <button type="button" class="btn btn-secondary px-3 py-1 text-white fw-bold" data-bs-dismiss="modal" style="background-color: #6c757d !important; border-color: #6c757d !important;">
+              <i class="fa-solid fa-xmark me-1"></i> ยกเลิก
+            </button>
+            <button type="submit" id="btnSubmitUnlock" class="btn btn-warning btn-sm text-dark fw-bold">
+              <i class="fa-solid fa-key me-1"></i> ยืนยันปลดล็อก
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const selectedDate = '<%= selectedDate %>';
+    const isPastDate = <%= isPastDate %>;
+
+    // 3. Password Protected Unlock Past Date
+    const unlockModalEl = document.getElementById('unlockPasswordModal');
+    let unlockModal = null;
+    if (unlockModalEl) {
+      unlockModal = new bootstrap.Modal(unlockModalEl);
+    }
+
+    const btnUnlock = document.getElementById('btnUnlockPastEdit');
+    if (btnUnlock && unlockModal) {
+      btnUnlock.addEventListener('click', function() {
+        document.getElementById('ownerUnlockPassword').value = '';
+        const errorDiv = document.getElementById('unlockErrorMsg');
+        if (errorDiv) errorDiv.classList.add('d-none');
+        unlockModal.show();
+      });
+    }
+
+    const unlockForm = document.getElementById('unlockPasswordForm');
+    if (unlockForm) {
+      unlockForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const pwd = document.getElementById('ownerUnlockPassword').value;
+        const btnSubmit = document.getElementById('btnSubmitUnlock');
+        const errorDiv = document.getElementById('unlockErrorMsg');
+
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังตรวจสอบ...';
+
+        fetch('/attendance/verify-unlock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwd })
+        })
+        .then(res => res.json())
+        .then(data => {
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = '<i class="fa-solid fa-key me-1"></i> ยืนยันปลดล็อก';
+
+          if (data.success) {
+            unlockModal.hide();
+
+            // Enable all table inputs
+            document.querySelectorAll('.row-clock-in, .row-clock-out, .row-status, .row-notes, .btn-save-row').forEach(el => {
+              el.disabled = false;
+            });
+
+            if (btnUnlock) {
+              btnUnlock.className = 'btn btn-success btn-sm text-light fw-bold shadow-sm';
+              btnUnlock.innerHTML = '<i class="fa-solid fa-lock-open me-1"></i> โหมดแก้ไขย้อนหลังเปิดใช้งานแล้ว';
+              btnUnlock.disabled = true;
+            }
+
+            const relockBtn = document.getElementById('btnRelockPastEdit');
+            if (relockBtn) relockBtn.classList.remove('d-none');
+
+            const noticeEl = document.getElementById('lockStatusNotice');
+            if (noticeEl) {
+              noticeEl.className = 'text-success';
+              noticeEl.innerHTML = '<i class="fa-solid fa-unlock me-1"></i>(เปิดโหมดแก้ไขแล้ว)';
+            }
+            alert('🎉 ' + data.message);
+          } else {
+            if (errorDiv) {
+              errorDiv.textContent = data.message;
+              errorDiv.classList.remove('d-none');
+            } else {
+              alert('⚠️ ' + data.message);
+            }
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = '<i class="fa-solid fa-key me-1"></i> ยืนยันปลดล็อก';
+          alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+        });
+      });
+    }
+
+    // 4. Quick Row Save from Table
+    document.querySelectorAll('.btn-save-row').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const userId = this.getAttribute('data-user-id');
+        const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+        if (!row) return;
+
+        const clockIn = row.querySelector('.row-clock-in').value;
+        const clockOut = row.querySelector('.row-clock-out').value;
+        const status = row.querySelector('.row-status').value;
+        const notes = row.querySelector('.row-notes').value;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+        fetch('/attendance/quick-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            work_date: selectedDate,
+            clock_in_time: clockIn ? clockIn + ':00' : null,
+            clock_out_time: clockOut ? clockOut + ':00' : null,
+            status: status,
+            notes: notes
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-check text-success"></i> บันทึกแล้ว';
+          setTimeout(() => {
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> บันทึก';
+          }, 2000);
+          if (!data.success) {
+            alert('⚠️ ' + data.message);
+          }
+        })
+        .catch(err => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> บันทึก';
+          console.error(err);
+          alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        });
+      });
+    });
+  });
+</script>
+
+<%- include('../partials/footer') %>

@@ -78,6 +78,18 @@
       </ul>
     </div>
 
+    <!-- Item: Attendance (เช็คชื่อเข้างาน) -->
+    <div class="menu-block">
+      <ul class="sidebar-menu">
+        <li class="menu-item <%= typeof activePage !== 'undefined' && activePage === 'attendance' ? 'active' : '' %>">
+          <a href="/attendance">
+            <i class="fa-solid fa-clipboard-user text-primary"></i>
+            <span>เช็คชื่อเข้างาน</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
     <% if (typeof user !== 'undefined' && user && user.role === 'owner') { %>
       <!-- Item: Mechanics -->
       <div class="menu-block">
